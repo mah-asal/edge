@@ -1,4 +1,5 @@
-import type { Context, Service, ServiceSchema, ServiceSettingSchema } from "moleculer";
+import type { ServiceSchema } from "moleculer";
+import { md5 } from "js-md5";
 import api from "../shared/api";
 
 
@@ -12,6 +13,7 @@ const DropdownService: ServiceSchema = {
 	settings: {
 		dropdowns: [],
 		maps: {},
+		hash: '',
 	},
 
 	/**
@@ -28,28 +30,18 @@ const DropdownService: ServiceSchema = {
 			description: "In this action we are just returning list of dropdowns",
 			cache: {
 				enabled: true,
-				// ttl for 1 hour
-				ttl: 3600
+				ttl: 60
 			},
 			async handler(ctx) {
 				try {
-					const result: any[] = await api.request({
-						method: "GET",
-						path: "/AppDropDown/GetAll"
-					});
-
-					this.settings.dropdowns = result.map(this.formatDropdown);
-
-					// covert dropdowns to '{group}:{value}': {text} for mapping
-					for (const item of this.settings.dropdowns) {
-						this.settings.maps[`${item.group}:${item.value}`] = item.text.trim();
-					}
+					await this.loadDropdown();
 
 					return {
 						code: 200,
-						data: result,
+						data: this.settings.dropdowns,
 						meta: {
-							total: result.length
+							total: this.settings.dropdowns.length,
+							hash: this.settings.hash
 						}
 					}
 
@@ -223,6 +215,32 @@ const DropdownService: ServiceSchema = {
 				parent: item.parentId,
 				group: item.keyGroup,
 			}
+		},
+		async loadDropdown() {
+			try {
+				const result: any[] = await api.request({
+					method: "GET",
+					path: "/AppDropDown/GetAll"
+				});
+
+				this.settings.dropdowns = result.map(this.formatDropdown);
+
+				// covert dropdowns to '{group}:{value}': {text} for mapping
+				for (const item of this.settings.dropdowns) {
+					this.settings.maps[`${item.group}:${item.value}`] = item.text.trim();
+				}
+
+				this.settings.hash = md5(JSON.stringify(this.settings.maps));
+
+				this.broker.call('api.v1.config.set', {
+					key: 'hash:dropdowns',
+					value: this.settings.hash,
+				});
+
+				return Promise.resolve();
+			} catch (error) {
+				return Promise.reject();
+			}
 		}
 	},
 
@@ -234,23 +252,10 @@ const DropdownService: ServiceSchema = {
 	/**
 	 * Service started lifecycle event handler
 	 */
-	async started() {
-		try {
-			const result: any[] = await api.request({
-				method: "GET",
-				path: "/AppDropDown/GetAll"
-			});
-
-			this.settings.dropdowns = result.map(this.formatDropdown);
-
-			// covert dropdowns to '{group}:{value}': {text} for mapping
-			for (const item of this.settings.dropdowns) {
-				this.settings.maps[`${item.group}:${item.value}`] = item.text.trim();
-			}
-
-		} catch (error) {
-
-		}
+	started() {
+		setTimeout(() => {
+			this.loadDropdown().catch(() => { });
+		}, 1000);
 	},
 
 	/**
