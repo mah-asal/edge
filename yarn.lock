@@ -1921,7 +1921,7 @@ http-errors@2.0.0:
     statuses "2.0.1"
     toidentifier "1.0.1"
 
-"http@file:/Users/mirza/Desktop/mahasal-utils/projects/http":
+"http@file:/home/mirza/workspace/projects/edge/projects/http":
   version "1.0.0"
   resolved "file:projects/http"
   dependencies:
@@ -3245,7 +3245,7 @@ socket.io@^4.7.4:
     socket.io-adapter "~2.5.2"
     socket.io-parser "~4.2.4"
 
-"socket@file:/Users/mirza/Desktop/mahasal-utils/projects/socket":
+"socket@file:/home/mirza/workspace/projects/edge/projects/socket":
   version "1.0.0"
   resolved "file:projects/socket"
   dependencies:
