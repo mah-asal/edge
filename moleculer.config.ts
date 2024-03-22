@@ -65,12 +65,22 @@ const brokerConfig: BrokerOptions = {
 
 	// Define a cacher.
 	// More info: https://moleculer.services/docs/0.14/caching.html
-	cacher: process.env.REDIS_URL ? {
+	cacher: process.env.REDIS_HOST ? {
 		type: "Redis",
 		options: {
-			// Define Redis connection URL
-			url: process.env.REDIS_URL,
-
+			// Prefix for keys
+			prefix: "MOL",
+			// set Time-to-live to 30sec.
+			ttl: 30,
+			// Turns Redis client monitoring on.
+			monitor: false,
+			redis: {
+				// Define Redis connection URL
+				host: process.env.REDIS_HOST,
+				port: process.env.REDIS_PORT,
+				password: process.env.REDIS_PASSWORD,
+				db: process.env.REDIS_DB
+			},
 			keygen(name: string, params: any, meta: any, keys?: string[]) {
 				let key = `${name}:`;
 
