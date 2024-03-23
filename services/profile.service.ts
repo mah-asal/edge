@@ -50,6 +50,24 @@ const ProfileService: ServiceSchema = {
 					min: 1,
 					convert: true,
 				},
+				token: {
+					type: "string",
+					optional: true,
+				},
+				cache: [
+					{
+						type: "boolean",
+						optional: true,
+					},
+					{
+						type: "number",
+						convert: true,
+						optional: true,
+						default: 0,
+						min: 0,
+						max: 1,
+					}
+				],
 				detailed: [
 					{
 						type: "boolean",
@@ -66,14 +84,13 @@ const ProfileService: ServiceSchema = {
 				],
 			},
 			cache: {
-				enabled: true,
+				enabled: ctx => !ctx.params.cache,
 				// ttl for 1 hour
 				ttl: 3600
 			},
 			async handler(ctx) {
 				try {
-					const { id, detailed } = ctx.params;
-					const token = ctx.meta.token;
+					const { id, token, detailed } = ctx.params;
 
 					const result: any = await api.request({
 						method: "GET",
@@ -154,30 +171,6 @@ const ProfileService: ServiceSchema = {
 	 * Methods
 	 */
 	methods: {
-		async textFromDropdown(
-			group: string,
-			value: string
-		) {
-			if(!value) return "نامشخص";
-
-			try {
-				const result: any = await this.broker.call('api.v1.dropdown.byGroupAndValue', {
-					key: group,
-					value: value.toString(),
-				});				
-
-				if (result.data) {
-					return result.data;
-				}
-
-				return "خطا دریافت"
-
-			} catch (error) {
-				console.error(error);
-
-				return "خطا دریافت"
-			}
-		},
 		async formatProfile(item: any, detailed: boolean = false, withToken: boolean = false) {
 			let image = item.defaultImageUrl;
 
