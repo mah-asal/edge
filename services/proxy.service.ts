@@ -33,7 +33,17 @@ const ProxyService: ServiceSchema = {
 				method: {
 					type: "enum",
 					values: ["GET", "POST", "PUT", "DELETE"],
-					optional: false,
+					default: "GET",
+					optional: true,
+				},
+				header: {
+					type: "object",
+					optional: true,
+					default: {}
+				},
+				token: {
+					type: "string",
+					optional: true,
 				},
 				data: {
 					type: "object",
@@ -41,11 +51,9 @@ const ProxyService: ServiceSchema = {
 					default: {}
 				},
 			},
-			
 			async handler(ctx) {
 				try {
-					const { path, method, data } = ctx.params;
-					const token = ctx.meta.token;
+					const { path, method, header, token, data } = ctx.params;
 
 					const body = new FormData();
 
@@ -59,8 +67,9 @@ const ProxyService: ServiceSchema = {
 						token: token,
 						data: body,
 						headers: {
+							...header,
 							// form data
-							'Content-Type': 'application/x-www-form-urlencoded',						
+							'Content-Type': 'application/x-www-form-urlencoded',
 						}
 					});
 
