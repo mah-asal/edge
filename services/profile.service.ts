@@ -1,4 +1,8 @@
-import type { Context, Service, ServiceSchema, ServiceSettingSchema } from "moleculer";
+import type { ServiceSchema } from "moleculer";
+
+import moment from 'jalali-moment';
+import qs from 'qs';
+
 import api from "../shared/api";
 import endpoint from "../shared/endpoint";
 
@@ -30,6 +34,11 @@ const ProfileService: ServiceSchema = {
 			"-140": "RESTORED_PASSWORD",
 			"-150": "UNEXPIRED_PASSWORD",
 			"-160": "UNSUSPENDED",
+		},
+		seen: {
+			"0": "offline",
+			"1": "recently",
+			"2": "online"
 		}
 	},
 
@@ -42,17 +51,129 @@ const ProfileService: ServiceSchema = {
 	 * Actions
 	 */
 	actions: {
+		search: {
+			visibility: 'published',
+			description: 'Search in profiles with filters',
+			params: {
+				page: {
+					type: "number",
+					min: 1,
+					default: 1,
+					optional: true,
+					convert: true,
+				},
+				limit: {
+					type: "number",
+					min: 1,
+					max: 100,
+					default: 10,
+					optional: true,
+					convert: true
+				},
+				type: {
+					type: 'enum',
+					values: ['newest', 'advertised', 'visited'],
+					default: 'newest'
+				}
+			},
+			async handler(ctx) {
+				try {
+					const { page, limit, type } = ctx.params;
+					const { token } = ctx.meta;
+
+					let path = '';
+					let typeQueries: any = {};
+
+					switch (type) {
+						case 'advertised':
+							path = '/panel/AdvertisedUsers'
+							break;
+
+						case 'visited':
+							path = '/Fave/details';
+							typeQueries = {
+								isRandom: true, userReactionType: 7, isMyReaction: false
+							};
+							break;
+
+						case 'newest':
+						default:
+							path = '/search';
+							break;
+					}
+
+					const queries = qs.stringify({
+						pageIndex: page - 1,
+						pageSize: limit,
+						...typeQueries,
+					});
+
+					const result = await api.request({
+						path: `${path}?${queries}`,
+						method: 'GET',
+						token,
+					});
+
+					let output: any[] = [];
+
+					for (let item of result.returnData.items) {
+						let image = item.defaultImageUrl;
+
+						if (item.userImageConfirmed && item.userImagesURL) {
+							image = item.userImagesURL;
+						}
+
+						image = endpoint.api + image;
+
+						const cityResult: any = await ctx.call('api.v1.dropdown.byGroupAndValue', {
+							key: "City",
+							value: item.city ? item.city.toString() : '',
+						});
+
+						output.push({
+							id: item.id,
+							avatar: image,
+							fullname: `${item.name} ${item.family ?? ''}`.trim(),
+							verified: item.mobileConfirmed ?? false,
+							city: cityResult && cityResult.code == 200 ? cityResult.data : '-',
+							age: (() => {
+								const dur = moment.duration(moment().diff(moment(item.birthDate)));
+
+								return Math.round(dur.asYears());
+							})(),
+							seen: this.settings.seen[item.isOnlineByDateTime] ?? "offline",
+							plan: {
+								special: item.hasSpecialAccount ? true : false,
+								ad: item.hasAdvertisementAccount ? true : false,
+							},
+						})
+					}
+
+					return {
+						code: 200,
+						meta: {
+							total: result.returnData.totalCount,
+							last: result.returnData.totalPages,
+							page,
+							limit,
+						},
+						data: output,
+					}
+				} catch (error) {
+					return {
+						code: 500,
+					}
+				}
+			}
+		},
 		one: {
 			visibility: 'published',
+			description: 'Get one profile by id',
 			params: {
 				id: {
 					type: "number",
 					min: 1,
 					convert: true,
-				},
-				token: {
-					type: "string",
-					optional: true,
 				},
 				cache: [
 					{
@@ -85,12 +206,13 @@ const ProfileService: ServiceSchema = {
 			},
 			cache: {
 				enabled: ctx => !ctx.params.cache,
-				// ttl for 1 hour
-				ttl: 3600
+				ttl: 120,
+				keys: ['id', 'detailed'],
 			},
 			async handler(ctx) {
 				try {
-					const { id, token, detailed } = ctx.params;
+					const { id, detailed } = ctx.params;
+					const { token } = ctx.meta;
 
 					const result: any = await api.request({
 						method: "GET",
@@ -111,7 +233,7 @@ const ProfileService: ServiceSchema = {
 					// handle user status
 					const status = result.returnData.latestUserLoginStatus;
 
-					if(status && this.settings.status[status]) {
+					if (status && this.settings.status[status]) {
 						return {
 							code: 200,
 							data: {
@@ -159,6 +281,30 @@ const ProfileService: ServiceSchema = {
 					}
 				}
 			}
+		},
+		me: {
+			visibility: "published",
+			description: "Get your profile",
+			async handler(ctx) {
+				try {
+					const token = ctx.meta.token;
+
+					const result: any = await api.request({
+						method: "GET",
+						path: `/Profile`,
+						token: token,
+					});
+
+					return {
+						code: 200,
+						data: await this.formatProfile(result.returnData, true, true),
+					}
+				} catch (error) {
+					return {
+						code: 500
+					}
+				}
+			}
 		}
 	},
 
@@ -177,7 +323,7 @@ const ProfileService: ServiceSchema = {
 			if (item.userImageConfirmed && item.userImagesURL) {
 				image = item.userImagesURL;
 			}
-			
+
 			image = endpoint.api + image;
 
 			let details: any = {};
@@ -213,22 +359,58 @@ const ProfileService: ServiceSchema = {
 				details['weight'] = item.weight;
 				details['job'] = item.job;
 				details['aboutMe'] = item.aboutMe;
-			}			
+				details['birthDate'] = moment(item.birthDate).locale('fa').format('dddd jDD jMMMM jYYYY');
+				details['registerDate'] = moment(item.createDate).locale('fa').format('dddd jDD jMMMM jYYYY');
+				details['age'] = (() => {
+					const dur = moment.duration(moment().diff(moment(item.birthDate)));
+
+					return Math.round(dur.asYears());
+				})();
+			}
+
+			let plan: any = {};
+
+			if (withToken) {
+				plan['sms'] = item.countSmsReminded;
+
+				const diff = (key = "") => {
+					const value = item[key];
+
+					if (value) {
+						const dur = moment.duration(moment(value).diff(moment()));
+
+						return dur.asDays() <= 0 ? 0 : Math.round(dur.asDays());
+					}
+
+					return 0;
+				}
+
+				plan['specialDays'] = diff('endDateSpecialAccount');
+				plan['adDays'] = diff('endDateAdvertisementAccount');
+			}
 
 			return {
 				id: item.id,
 				status: this.settings.status[item.latestUserLoginStatus * -10],
 				avatar: image,
 				fullname: `${item.name} ${item.family ?? ''}`.trim(),
+				phone: item.mobile,
+				verified: item.mobileConfirmed ?? false,
+				last: moment(item.latestUserActivity).locale('fa').format('dddd jDD jMMMM jYYYY ساعت HH:MM'),
+				seen: this.settings.seen[item.isOnlineByDateTime] ?? "offline",
 				...details,
 				plan: {
 					free: item.hasFreeSpecialAccount ? true : false,
 					special: item.hasSpecialAccount ? true : false,
 					ad: item.hasAdvertisementAccount ? true : false,
+					...plan
 				},
 				permission: {
 					voiceCall: item.allowVoiceCall,
 					videoCall: item.allowVideoCall,
+					notificationChat: item.allowNotificationChat,
+					notificationVoiceCall: item.allowNotificationVoiceCall,
+					notificationVideoCall: item.allowNotificationVideoCall,
 				},
 				relation: withToken ? {
 					blocked: item.isBlocked,

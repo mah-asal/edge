@@ -113,6 +113,14 @@ const HttpService: ServiceSchema = {
                 responsedAt: null,
                 response: null,
             };
+            
+            if(req.headers['bearer']) {
+                (req as any).meta.token = req.headers['bearer'];
+            }
+
+            if(req.query['token']) {
+                (req as any).meta.token = req.query['token'];
+            }
 
             const _resJson = res.json;
 

@@ -41,10 +41,6 @@ const ProxyService: ServiceSchema = {
 					optional: true,
 					default: {}
 				},
-				token: {
-					type: "string",
-					optional: true,
-				},
 				data: {
 					type: "object",
 					optional: true,
@@ -53,7 +49,8 @@ const ProxyService: ServiceSchema = {
 			},
 			async handler(ctx) {
 				try {
-					const { path, method, header, token, data } = ctx.params;
+					const { path, method, header, data } = ctx.params;
+					const token = ctx.meta.token;
 
 					const body = new FormData();
 

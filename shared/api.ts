@@ -1,31 +1,37 @@
 import endpoint from "./endpoint";
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 
 export default {
     request: async (params: IRequestParams) => {
         try {
             let headers: any = {
-                'Api-Request': 'True'
+                'Api-Request': 'True',
+                'Content-Type': 'application/json',
             };
 
             // bearer token if exists 
             if (params.token) {
-                headers['Authorization'] = `Bearer ${params.token}`;
+                headers['Bearer'] = params.token;
             }
 
-            if(params.headers) {
+            if (params.headers) {
                 headers = {
                     ...headers,
                     ...params.headers
                 };
             }
 
-            const response = await axios({
+            let config: AxiosRequestConfig<any> = {
                 method: params.method,
                 url: endpoint.api + params.path,
                 headers: headers,
-                data: params.data
-            });
+            };
+
+            if (params.data) {
+                config.data = params.data;
+            }
+
+            const response = await axios(config);
 
             return response.data;
         } catch (error) {
