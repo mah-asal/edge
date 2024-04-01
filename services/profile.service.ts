@@ -39,6 +39,12 @@ const ProfileService: ServiceSchema = {
 			"0": "offline",
 			"1": "recently",
 			"2": "online"
+		},
+		reactions: {
+			"block": "Block",
+			"unblock": "Unblock",
+			"favorite": "Fave",
+			"disfavorite": "Unfave"
 		}
 	},
 
@@ -51,6 +57,55 @@ const ProfileService: ServiceSchema = {
 	 * Actions
 	 */
 	actions: {
+		reaction: {
+			visibility: "published",
+			description: "React to a user",
+			params: {
+				action: {
+					type: "enum",
+					values: [
+						"block", "unblock", "favorite", "disfavorite"
+					],
+				},
+				user: {
+					type: "number",
+					convert: true,
+					min: 1,
+				}
+			},
+			async handler(ctx) {
+				try {
+					const { action, user } = ctx.params;
+					const { token } = ctx.meta;
+
+					if (!token) {
+						return {
+							code: 403
+						}
+					}
+
+					const queries = qs.stringify({
+						userReactionType: this.settings.reactions[action],
+						userId: user,
+					});
+
+					const result = await api.request({
+						path: `/fave/add?${queries}`,
+						method: 'GET',
+						token,
+					});
+
+					return {
+						status: result.code == 0,
+						code: 200,
+					}
+				} catch (error) {
+					return {
+						code: 500
+					}
+				}
+			}
+		},
 		search: {
 			visibility: 'published',
 			description: 'Search in profiles with filters',
@@ -72,7 +127,7 @@ const ProfileService: ServiceSchema = {
 				},
 				type: {
 					type: 'enum',
-					values: ['newest', 'advertised', 'visited'],
+					values: ['newest', 'advertised', 'visited', 'favorited', 'favorites', 'blocked', 'blocks'],
 					default: 'newest'
 				}
 			},
@@ -96,6 +151,34 @@ const ProfileService: ServiceSchema = {
 							};
 							break;
 
+						case 'favorited':
+							path = '/Fave/details';
+							typeQueries = {
+								userReactionType: 1, isMyReaction: false
+							};
+							break;
+
+						case 'favorites':
+							path = '/Fave/details';
+							typeQueries = {
+								userReactionType: 1, isMyReaction: true
+							};
+							break;
+
+						case 'blocked':
+							path = '/Fave/details';
+							typeQueries = {
+								userReactionType: 3, isMyReaction: false
+							};
+							break;
+
+						case 'blocks':
+							path = '/Fave/details';
+							typeQueries = {
+								userReactionType: 3, isMyReaction: true
+							};
+							break;
+
 						case 'newest':
 						default:
 							path = '/search';
@@ -116,44 +199,48 @@ const ProfileService: ServiceSchema = {
 
 					let output: any[] = [];
 
-					for (let item of result.returnData.items) {
-						let image = item.defaultImageUrl;
+					if (result.returnData) {
 
-						if (item.userImageConfirmed && item.userImagesURL) {
-							image = item.userImagesURL;
+
+						for (let item of result.returnData.items) {
+							let image = item.defaultImageUrl;
+
+							if (item.userImageConfirmed && item.userImagesURL) {
+								image = item.userImagesURL;
+							}
+
+							image = endpoint.api + image;
+
+							const cityResult: any = await ctx.call('api.v1.dropdown.byGroupAndValue', {
+								key: "City",
+								value: item.city ? item.city.toString() : '',
+							});
+
+							output.push({
+								id: item.id,
+								avatar: image,
+								fullname: `${item.name} ${item.family ?? ''}`.trim(),
+								verified: item.mobileConfirmed ?? false,
+								city: cityResult && cityResult.code == 200 ? cityResult.data : '-',
+								age: (() => {
+									const dur = moment.duration(moment().diff(moment(item.birthDate)));
+
+									return Math.round(dur.asYears());
+								})(),
+								seen: this.settings.seen[item.isOnlineByDateTime] ?? "offline",
+								plan: {
+									special: item.hasSpecialAccount ? true : false,
+									ad: item.hasAdvertisementAccount ? true : false,
+								},
+							})
 						}
-
-						image = endpoint.api + image;
-
-						const cityResult: any = await ctx.call('api.v1.dropdown.byGroupAndValue', {
-							key: "City",
-							value: item.city ? item.city.toString() : '',
-						});
-
-						output.push({
-							id: item.id,
-							avatar: image,
-							fullname: `${item.name} ${item.family ?? ''}`.trim(),
-							verified: item.mobileConfirmed ?? false,
-							city: cityResult && cityResult.code == 200 ? cityResult.data : '-',
-							age: (() => {
-								const dur = moment.duration(moment().diff(moment(item.birthDate)));
-
-								return Math.round(dur.asYears());
-							})(),
-							seen: this.settings.seen[item.isOnlineByDateTime] ?? "offline",
-							plan: {
-								special: item.hasSpecialAccount ? true : false,
-								ad: item.hasAdvertisementAccount ? true : false,
-							},
-						})
 					}
 
 					return {
 						code: 200,
 						meta: {
-							total: result.returnData.totalCount,
-							last: result.returnData.totalPages,
+							total: result.returnData ? result.returnData.totalCount : 0,
+							last: result.returnData ? result.returnData.totalPages : 1,
 							page,
 							limit,
 						},
@@ -205,7 +292,7 @@ const ProfileService: ServiceSchema = {
 				],
 			},
 			cache: {
-				enabled: ctx => !ctx.params.cache,
+				enabled: ctx => ctx.params.cache,
 				ttl: 120,
 				keys: ['id', 'detailed'],
 			},
