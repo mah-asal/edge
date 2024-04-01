@@ -46,6 +46,25 @@ const ProxyService: ServiceSchema = {
 					optional: true,
 					default: {}
 				},
+				cache: [
+					{
+						type: "boolean",
+						optional: true,
+					},
+					{
+						type: "number",
+						convert: true,
+						optional: true,
+						default: 0,
+						min: 0,
+						max: 1,
+					}
+				],
+			},
+			cache: {
+				enabled: ctx => ctx.params.cache,
+				ttl: 120,
+				keys: ['path', 'method', 'data', 'header'],
 			},
 			async handler(ctx) {
 				try {
@@ -86,7 +105,7 @@ const ProxyService: ServiceSchema = {
 										result.messages[0]
 										:
 										null,
-							data: result.returnData,
+							data: result.returnData ?? result,
 						}
 					}
 				} catch (error) {
