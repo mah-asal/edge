@@ -129,11 +129,15 @@ const ProfileService: ServiceSchema = {
 					type: 'enum',
 					values: ['newest', 'advertised', 'visited', 'favorited', 'favorites', 'blocked', 'blocks'],
 					default: 'newest'
+				},
+				filters: {
+					type: "object",
+					default: {},
 				}
 			},
 			async handler(ctx) {
 				try {
-					const { page, limit, type } = ctx.params;
+					const { page, limit, type, filters } = ctx.params;
 					const { token } = ctx.meta;
 
 					let path = '';
@@ -189,6 +193,7 @@ const ProfileService: ServiceSchema = {
 						pageIndex: page - 1,
 						pageSize: limit,
 						...typeQueries,
+						...filters
 					});
 
 					const result = await api.request({
@@ -221,7 +226,7 @@ const ProfileService: ServiceSchema = {
 								avatar: image,
 								fullname: `${item.name} ${item.family ?? ''}`.trim(),
 								verified: item.mobileConfirmed ?? false,
-								city: cityResult && cityResult.code == 200 ? cityResult.data : '-',
+								city: cityResult && cityResult.code == 200 ? cityResult.data ?? 'خارج از کشور' : '-',
 								age: (() => {
 									const dur = moment.duration(moment().diff(moment(item.birthDate)));
 
@@ -262,20 +267,6 @@ const ProfileService: ServiceSchema = {
 					min: 1,
 					convert: true,
 				},
-				cache: [
-					{
-						type: "boolean",
-						optional: true,
-					},
-					{
-						type: "number",
-						convert: true,
-						optional: true,
-						default: 0,
-						min: 0,
-						max: 1,
-					}
-				],
 				detailed: [
 					{
 						type: "boolean",
@@ -292,7 +283,7 @@ const ProfileService: ServiceSchema = {
 				],
 			},
 			cache: {
-				enabled: ctx => ctx.params.cache,
+				enabled: ctx => ctx.meta.cache,
 				ttl: 120,
 				keys: ['id', 'detailed'],
 			},
@@ -372,6 +363,11 @@ const ProfileService: ServiceSchema = {
 		me: {
 			visibility: "published",
 			description: "Get your profile",
+			cache: {
+				enabled: ctx => ctx.meta.cache,
+				ttl: 120,
+				keys: ['#token'],
+			},
 			async handler(ctx) {
 				try {
 					const token = ctx.meta.token;
@@ -411,7 +407,7 @@ const ProfileService: ServiceSchema = {
 				image = item.userImagesURL;
 			}
 
-			image = endpoint.api + image;
+			image = endpoint.format(image);
 
 			let details: any = {};
 
@@ -431,8 +427,8 @@ const ProfileService: ServiceSchema = {
 						CarStatus: item.carStatus,
 						HouseStatus: item.houseStatus,
 						LifeStyle: item.lifeStyle,
-						Province: item.province,
-						City: item.city,
+						Province: item.province ?? 'خارج از کشور',
+						City: item.city ?? 'خارج از کشور',
 					}
 				});
 
@@ -487,7 +483,7 @@ const ProfileService: ServiceSchema = {
 				seen: this.settings.seen[item.isOnlineByDateTime] ?? "offline",
 				...details,
 				plan: {
-					free: item.hasFreeSpecialAccount ? true : false,
+					free: item.endDateFreeSpecialAccount != null ? true : false,
 					special: item.hasSpecialAccount ? true : false,
 					ad: item.hasAdvertisementAccount ? true : false,
 					...plan

@@ -3,7 +3,7 @@ import type { ServiceSchema } from "moleculer";
 import path from "path";
 import fs from "fs";
 
-import { app, server, express } from "./server";
+import { app, server, express, upload } from "./server";
 
 const HttpService: ServiceSchema = {
     name: "http",
@@ -120,6 +120,10 @@ const HttpService: ServiceSchema = {
 
             if(req.query['token']) {
                 (req as any).meta.token = req.query['token'];
+            }
+
+            if(req.headers['x-cache'] == 'true' || req.query['xCache'] == 'true') {
+                (req as any).meta.cache = true;
             }
 
             const _resJson = res.json;
@@ -249,8 +253,23 @@ const HttpService: ServiceSchema = {
             }
         });
 
+        app.all('/api/v1/upload', upload.single('file'), (req, res) => {
+            try {
+                return {
+                    code: 200,
+                    data: {
+                        ...req.file,
+                    }
+                }
+            } catch (error) {
+                return {
+                    code: 500
+                }
+            }
+        });
+
         // call action
-        app.all("/api/v1/call/:action", async (req, res) => {
+        app.all("/api/v1/call/:action",  async (req, res) => {
             try {
                 // concat queries and body
                 const params = {

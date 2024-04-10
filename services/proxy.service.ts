@@ -46,23 +46,9 @@ const ProxyService: ServiceSchema = {
 					optional: true,
 					default: {}
 				},
-				cache: [
-					{
-						type: "boolean",
-						optional: true,
-					},
-					{
-						type: "number",
-						convert: true,
-						optional: true,
-						default: 0,
-						min: 0,
-						max: 1,
-					}
-				],
 			},
 			cache: {
-				enabled: ctx => ctx.params.cache,
+				enabled: ctx => ctx.meta.cache,
 				ttl: 120,
 				keys: ['path', 'method', 'data', 'header'],
 			},
@@ -71,11 +57,13 @@ const ProxyService: ServiceSchema = {
 					const { path, method, header, data } = ctx.params;
 					const token = ctx.meta.token;
 
-					const body = new FormData();
+					const body = new FormData();					
 
 					Object.keys(data).forEach(key => {
-						body.append(key, data[key]);
-					});
+						if(data[key]) {
+							body.append(key, data[key]);
+						}						
+					});					
 
 					const result: any = await api.request({
 						method: method,
@@ -87,7 +75,7 @@ const ProxyService: ServiceSchema = {
 							// form data
 							'Content-Type': 'application/x-www-form-urlencoded',
 						}
-					});
+					});					
 
 					return {
 						code: 200,
@@ -109,7 +97,8 @@ const ProxyService: ServiceSchema = {
 						}
 					}
 				} catch (error) {
-					console.error(error);
+					// console.error(error);
+					console.log(error);
 
 					return {
 						code: 500

@@ -8,8 +8,13 @@ const keys = [
 	"link:blog",
 	"app:latest-version", // to show
 	"app:latest-version-code", // to compare
+	"config:free-account-time",
 	"hash:dropdowns",
-	"endpoint:api"
+	"endpoint:api",
+	"payment:card-number",
+	"payment:card-name",
+	"payment:card-color",
+	"payment:card-bank"
 ].sort();
 
 const ConfigService: ServiceSchema = {
