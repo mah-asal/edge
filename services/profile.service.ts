@@ -410,6 +410,7 @@ const ProfileService: ServiceSchema = {
 			image = endpoint.format(image);
 
 			let details: any = {};
+			let dropdowns: any = {};
 
 			if (detailed) {
 				const result: any = await this.broker.call('api.v1.dropdown.byBulk', {
@@ -432,9 +433,29 @@ const ProfileService: ServiceSchema = {
 					}
 				});
 
+				dropdowns = {
+					education: item.education,
+					religionRate: item.religionRate,
+					marriageType: item.marriageType,
+					sexuality: item.sexuality,
+					maritalStatus: item.maritalStatus,
+					skinColor: item.skinColor,
+					beautyRate: item.beautyRate,
+					styleRate: item.styleRate,
+					healthStatus: item.healthStatus,
+					salaryRange: item.salaryRange,
+					carStatus: item.carStatus,
+					houseStatus: item.houseStatus,
+					lifeStyle: item.lifeStyle,
+					province: item.province ?? '0',
+					city: item.city ?? '0',
+				};
+
 				if (result.code == 200) {
 					details = result.data;
 				}
+
+				const birthDate =  moment(item.birthDate).locale('fa');
 
 				details['childCount'] = item.childCount;
 				details['oldestChildAge'] = item.oldestChildAge;
@@ -442,8 +463,11 @@ const ProfileService: ServiceSchema = {
 				details['weight'] = item.weight;
 				details['job'] = item.job;
 				details['aboutMe'] = item.aboutMe;
-				details['birthDate'] = moment(item.birthDate).locale('fa').format('dddd jDD jMMMM jYYYY');
+				details['birthDate'] = birthDate.format('dddd jDD jMMMM jYYYY');
 				details['registerDate'] = moment(item.createDate).locale('fa').format('dddd jDD jMMMM jYYYY');
+				dropdowns['birthDateYear'] = birthDate.jYear().toString();
+				dropdowns['birthDateMonth'] = (birthDate.jMonth() + 1).toString();
+				dropdowns['birthDateDay'] = birthDate.jDate().toString();
 				details['age'] = (() => {
 					const dur = moment.duration(moment().diff(moment(item.birthDate)));
 
@@ -480,6 +504,7 @@ const ProfileService: ServiceSchema = {
 				phone: item.mobile,
 				verified: item.mobileConfirmed ?? false,
 				last: moment(item.latestUserActivity).locale('fa').format('dddd jDD jMMMM jYYYY ساعت HH:MM'),
+				ago: moment(item.latestUserActivity).locale('fa').fromNow(true),
 				seen: this.settings.seen[item.isOnlineByDateTime] ?? "offline",
 				...details,
 				plan: {
@@ -499,7 +524,8 @@ const ProfileService: ServiceSchema = {
 					blocked: item.isBlocked,
 					blockedMe: item.isBlockedMe,
 					favorited: item.isFaved,
-				} : undefined
+				} : undefined,
+				dropdowns
 			}
 		}
 	},
