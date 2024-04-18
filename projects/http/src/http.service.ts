@@ -49,11 +49,11 @@ const HttpService: ServiceSchema = {
         findAction(name: string): any {
             try {
                 const listActions = this.listActions();
-    
+
                 const foundAction = listActions.find((item: any) => item.name == name);
-    
+
                 return foundAction ?? foundAction!.action;
-                
+
             } catch (error) {
                 return undefined;
             }
@@ -83,7 +83,7 @@ const HttpService: ServiceSchema = {
     async started() {
         this.settings.state = "STARTED";
 
-        
+
         server.listen(
             this.settings.port,
             () => {
@@ -113,16 +113,16 @@ const HttpService: ServiceSchema = {
                 responsedAt: null,
                 response: null,
             };
-            
-            if(req.headers['bearer']) {
+
+            if (req.headers['bearer']) {
                 (req as any).meta.token = req.headers['bearer'];
             }
 
-            if(req.query['token']) {
+            if (req.query['token']) {
                 (req as any).meta.token = req.query['token'];
             }
 
-            if(req.headers['x-cache'] == 'true' || req.query['xCache'] == 'true') {
+            if (req.headers['x-cache'] == 'true' || req.query['xCache'] == 'true') {
                 (req as any).meta.cache = true;
             }
 
@@ -140,7 +140,7 @@ const HttpService: ServiceSchema = {
 
                 _resJson.call(res, body);
             }
-
+            
             next();
         });
 
@@ -253,29 +253,48 @@ const HttpService: ServiceSchema = {
             }
         });
 
-        app.all('/api/v1/upload', upload.single('file'), (req, res) => {
+        app.post('/api/v1/upload', upload.single('file'), (req, res) => {
             try {
-                return {
+                if(!req.file) {
+                    return res.json({
+                        status: false,
+                        code: 400,
+                        i18n: 'FILE_NEEDED',
+                        message: 'Need file to upload'
+                    });
+                }
+
+                res.json({
+                    status: true,
                     code: 200,
+                    i18n: 'FILE_UPLOADED',
+                    message: 'File uploaded successfully',
                     data: {
-                        ...req.file,
+                        mimeType: req.file!.mimetype,
+                        size: req.file!.size,
+                        url : (req.file as any).location,
                     }
-                }
+                });
             } catch (error) {
-                return {
-                    code: 500
-                }
+                console.error(error);
+                
+                res.status(500).json({
+                    stauts: false,
+                    code: 500,
+                    i18n: 'INTERNAL_SERVER_ERROR',
+                    message: 'Internal server error'
+                })
             }
         });
 
         // call action
-        app.all("/api/v1/call/:action",  async (req, res) => {
+        app.all("/api/v1/call/:action", async (req, res) => {
             try {
                 // concat queries and body
                 const params = {
                     ...req.query,
                     ...req.body,
-                };                
+                };
 
                 const action = req.params.action;
 
@@ -292,7 +311,7 @@ const HttpService: ServiceSchema = {
                 }
 
                 const foundAction = this.findAction(action);
-                
+
 
                 if (!foundAction || foundAction.action.visibility != "published") {
                     return res.status(404).json({
@@ -341,7 +360,7 @@ const HttpService: ServiceSchema = {
                 }
 
                 console.log(error.message);
-            
+
 
                 res.status(500).json({
                     status: false,
