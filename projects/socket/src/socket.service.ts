@@ -25,7 +25,54 @@ const SocketService: ServiceSchema = {
      * Actions
      */
     actions: {
+        onlines: {
+            visibility: 'published',
+            description: 'Get online users count',
+            async handler(ctx) {
+                try {
+                    return {
+                        code: 200,
+                        data: this.settings.io.engine.clientsCount,
+                    }
+                } catch (error) {
+                    return {
+                        code: 500
+                    }
+                }
+            }
+        },
+        online: {
+            visibility: 'published',
+            description: 'Get user socket is available or not to check user is online',
+            params: {
+                user: {
+                    type: 'number',
+                    convert: true,
+                    min: 1
+                }
+            },
+            async handler(ctx) {
+                try {
+                    const room = this.settings.io.sockets.adapter.rooms.get(ctx.params.user);
 
+                    if (room) {
+                        return {
+                            code: 200,
+                            i18n: 'ONLINE'
+                        }
+                    } else {
+                        return {
+                            code: 404,
+                            i18n: 'OFFLINE'
+                        }
+                    }
+                } catch (error) {
+                    return {
+                        code: 500
+                    }
+                }
+            }
+        },
     },
 
     /**
@@ -52,6 +99,10 @@ const SocketService: ServiceSchema = {
         "socket.room.join": {
             handler(ctx: any) {
                 const { room, socket } = ctx.params;
+
+                if (socket.meta) {
+                    socket.meta.id = room;
+                }
 
                 socket.join(room);
             }
@@ -118,6 +169,24 @@ const SocketService: ServiceSchema = {
                 $socket: socket,
             }
 
+            if (socket.handshake.headers['bearer']) {
+                (socket as any).meta.token = socket.handshake.headers['bearer'];
+
+                this.broker.emit("socket.auth", {
+                    socket,
+                    token: (socket as any).meta.token,
+                });
+            }
+
+            if (socket.handshake.query['bearer']) {
+                (socket as any).meta.token = socket.handshake.query['bearer'];
+
+                this.broker.emit("socket.auth", {
+                    socket,
+                    token: (socket as any).meta.token,
+                });
+            }
+
             const _socketEmit = socket.emit;
 
             (socket as any).emit = (event: string, data: any) => {
@@ -133,7 +202,20 @@ const SocketService: ServiceSchema = {
 
             // socket on auth event emit
             socket.on("auth", (data) => {
-                this.broker.emit("socket.auth", { socket, data });
+                if (data['token']) {
+                    (socket as any).meta.token = data['token'];
+                    this.broker.emit("socket.auth", { socket, token: data['token'] });
+                } else {
+                    socket.emit("actions_response", {
+                        status: false,
+                        code: 403,
+                        i18n: 'FORBIDEN',
+                        message: "Forbiden",
+                        data: {
+                            "message": "Bad Token"
+                        },
+                    });
+                }
             });
 
             socket.on("health", () => {
@@ -198,15 +280,20 @@ const SocketService: ServiceSchema = {
             });
 
             socket.on('call', async (data) => {
-                try {
-                    const { action, params, id } = data;
+                const { action, params, id, cache } = data;
 
+                try {
                     if (!action) {
                         return socket.emit("call_response", {
                             status: false,
                             code: 400,
                             i18n: 'BAD_DATA',
                             message: "Action name needed",
+                            meta: {
+                                id: id ?? "orphan",
+                                action: action,
+                                params: params,
+                            }
                         });
                     }
 
@@ -216,6 +303,11 @@ const SocketService: ServiceSchema = {
                             code: 400,
                             i18n: 'BAD_DATA',
                             message: "Action name cannot start with $",
+                            meta: {
+                                id: id ?? "orphan",
+                                action: action,
+                                params: params,
+                            }
                         });
                     }
 
@@ -227,6 +319,11 @@ const SocketService: ServiceSchema = {
                             code: 404,
                             i18n: 'ACTION_NOT_FOUND',
                             message: "Action not found",
+                            meta: {
+                                id: id ?? "orphan",
+                                action: action,
+                                params: params,
+                            }
                         });
                     }
 
@@ -238,8 +335,13 @@ const SocketService: ServiceSchema = {
                     }
 
                     const result: any = await this.broker.call(action, params, {
-                        meta: (socket as any).meta,
+                        meta: {
+                            ...(socket as any).meta,
+                            cache: cache ?? false
+                        }
                     });
+
+                    result.status = result.status ?? result.code == 200;
 
                     socket.emit("call_response", {
                         status: true,
@@ -265,7 +367,12 @@ const SocketService: ServiceSchema = {
                                 message: item.message,
                                 field: item.field,
                                 error: item.type
-                            }))
+                            })),
+                            meta: {
+                                id: id ?? "orphan",
+                                action: action,
+                                params: params,
+                            }
                         });
                     }
 
@@ -274,6 +381,11 @@ const SocketService: ServiceSchema = {
                         code: 500,
                         i18n: 'INTERNAL_SERVER_ERROR',
                         message: error.message,
+                        meta: {
+                            id: id ?? "orphan",
+                            action: action,
+                            params: params,
+                        }
                     });
                 }
             });

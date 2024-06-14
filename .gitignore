@@ -62,3 +62,8 @@ jspm_packages/
 
 # Don't track transpiled files
 dist/
+
+
+*.db
+
+docker/

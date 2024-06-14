@@ -2,19 +2,37 @@ import type { ServiceSchema } from "moleculer";
 
 import redis from "../shared/redis";
 import endpoint from "../shared/endpoint";
+import prisma from "../shared/prisma";
+
+const CONFIG_SUFFIX = process.env.CONFIG_SUFFIX as string;
 
 const keys = [
+	"link:download",
 	"link:contact-us",
 	"link:blog",
-	"app:latest-version", // to show
-	"app:latest-version-code", // to compare
+	"link:search",
+	"link:privacy",
+	"app:latest-version",
+	"app:deprecated-version",
 	"config:free-account-time",
+	"config:free-account-visable",
+	"config:visitation-hours",
+	"config:invitation-message",
+	"config:captcha",
+	"config:feedback",
 	"hash:dropdowns",
 	"endpoint:api",
+	"endpoint:public",
+	"endpoint:public:dating",
+	"endpoint:public:social",
+	"endpoint:invite",
+	"endpoint:bank:redirect",
 	"payment:card-number",
 	"payment:card-name",
 	"payment:card-color",
-	"payment:card-bank"
+	"payment:card-bank",
+	"cafebazaar:accessToken",
+	"cafebazaar:refreshToken"
 ].sort();
 
 const ConfigService: ServiceSchema = {
@@ -36,19 +54,45 @@ const ConfigService: ServiceSchema = {
 	 * Actions
 	 */
 	actions: {
-        all: {
-            visibility: "published",
-            description: "In this action we are just returning application config",
-            permission: ["api.v1.config.all"],
-            async handler(ctx) {
-                const configs = await this.getConfigs();
+		all: {
+			visibility: "published",
+			description: "In this action we are just returning application config",
+			permission: ["api.v1.config.all"],
+			params: {
+				store: {
+					type: 'enum',
+					values: ['GOOGLEPLAY', 'MYKEY', 'CAFEBAZAAR', 'DIRECT', 'ANY'],
+					default: 'ANY'
+				}
+			},
+			async handler(ctx) {
+				try {
+					const { store } = ctx.params;
 
-                return {
-                    code: 200,
-                    data: configs,
-                }
-            }
-        },
+					const { total, stores, values } = await this.getConfigs(store);
+
+					return {
+						code: 200,
+						meta: {
+							total,
+							stores,
+						},
+						data: keys.reduce((prev, curr) => {
+							return {
+								...prev,
+								[curr]: values[curr] ?? null,
+							}
+						}, {})
+					}
+				} catch (error) {
+					console.error(error);
+
+					return {
+						code: 500
+					}
+				}
+			}
+		},
 		set: {
 			visibility: "published",
 			description: "In this action we are just setting application config",
@@ -65,16 +109,47 @@ const ConfigService: ServiceSchema = {
 					{
 						type: "number"
 					}
-				]
+				],
+				store: {
+					type: 'enum',
+					values: ['GOOGLEPLAY', 'MYKEY', 'CAFEBAZAAR', 'DIRECT', 'ANY'],
+					default: 'ANY'
+				}
 			},
 			async handler(ctx) {
-				const { key, value } = ctx.params;
+				const { key, value, store } = ctx.params;
 
-				await redis.set('#mahasal:' + key, value);
+				const one = await prisma.config.findFirst({
+					where: {
+						key,
+						store,
+					}
+				});
+
+				if (one) {
+					await prisma.config.update({
+						where: {
+							id: one.id
+						},
+						data: {
+							value
+						}
+					});
+				} else {
+					await prisma.config.create({
+						data: {
+							key,
+							value,
+							store
+						}
+					});
+				}
 
 				if (key === 'endpoint:api') {
 					endpoint.api = value;
 				}
+
+				await this.emitConfigChanged(store);
 
 				return {
 					code: 200,
@@ -89,43 +164,74 @@ const ConfigService: ServiceSchema = {
 				key: {
 					type: "enum",
 					values: keys
+				},
+				store: {
+					type: 'enum',
+					values: ['GOOGLEPLAY', 'MYKEY', 'CAFEBAZAAR', 'DIRECT', 'ANY'],
+					default: 'ANY'
 				}
 			},
 			async handler(ctx) {
-				const { key } = ctx.params;
+				const { key, store } = ctx.params;
 
-				await redis.del('#mahasal:' + key);
+				const one = await prisma.config.findFirst({
+					where: {
+						key,
+						store,
+					}
+				});
+
+				if (one) {
+					await prisma.config.delete({
+						where: {
+							id: one.id
+						}
+					});
+				}
 
 				if (key === 'endpoint:api') {
 					endpoint.api = '';
 				}
+
+				await this.emitConfigChanged(store);
 
 				return {
 					code: 200,
 				}
 			},
 		},
-        get: {
-            visibility: "published",
-            description: "In this action we are just returning application config",
-            permission: ["api.v1.config.get"],
-            params: {
-                key: {
-                    type: "enum",
-                    values: keys
-                }
-            },
-            async handler(ctx) {
-                const { key } = ctx.params;
-                const value = await redis.get('#mahasal:' + key);
+		get: {
+			visibility: "published",
+			description: "In this action we are just returning application config",
+			permission: ["api.v1.config.get"],
+			params: {
+				key: {
+					type: "enum",
+					values: keys
+				},
+				store: {
+					type: 'enum',
+					values: ['GOOGLEPLAY', 'MYKEY', 'CAFEBAZAAR', 'DIRECT', 'ANY'],
+					default: 'ANY'
+				}
+			},
+			async handler(ctx) {
+				const { key, store } = ctx.params;
 
-                return {
-                    code: 200,
-                    data: value,
-                }
-            }
-        
-        }
+				const one = await prisma.config.findFirst({
+					where: {
+						key,
+						store,
+					}
+				});
+
+				return {
+					code: 200,
+					data: one?.value ?? null,
+				}
+			}
+
+		}
 	},
 
 	/**
@@ -137,20 +243,46 @@ const ConfigService: ServiceSchema = {
 	 * Methods
 	 */
 	methods: {
-		async getConfigs() {
+		async emitConfigChanged(store: string = 'ANY') {
+			try {
+				const configs = await this.getConfigs(store);
+
+				this.broker.emit('config.changed', configs);
+			} catch (error) {
+				//
+			}
+		},
+		async getConfigs(store: string = 'ANY') {
+			const stores = Array.from(new Set(['ANY', store]));
+
 			try {
 
-				const values = await redis.mget(keys.map((key: string) => '#mahasal:' + key));
+				const data = await prisma.config.findMany({
+					where: {
+						OR: stores.map((store: string) => ({
+							store,
+						}))
+					}
+				});
 
-				// return like this => {[key]: value}
-				const result = keys.reduce((acc: any, key, index) => {
-					acc[key] = values[index] ?? null;
-					return acc;
+				const values: any = data.reduce((prev, curr) => {
+					return {
+						...prev,
+						[curr.key]: curr.value
+					}
 				}, {});
 
-				return result;
+				return {
+					stores,
+					total: data.length,
+					values,
+				}
 			} catch (error) {
-				return null;
+				return {
+					stores,
+					total: 0,
+					values: {}
+				}
 			}
 		}
 	},
@@ -163,12 +295,12 @@ const ConfigService: ServiceSchema = {
 	/**
 	 * Service started lifecycle event handler
 	 */
-	async started() { 
+	async started() {
 		// set endpoint from redis
-		const endpointValue = await redis.get('#mahasal:endpoint:api');		
+		const endpointValue = await redis.get(`${CONFIG_SUFFIX}endpoint:api`);
 
 		if (endpointValue) {
-			endpoint.api = endpointValue;			
+			endpoint.api = endpointValue;
 		}
 	},
 

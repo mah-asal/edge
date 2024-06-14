@@ -1,21 +1,18 @@
 version: "3.3"
 
 services:
-
-
-  greeter:
-    build:
-      context: .
-    image: core
-    env_file: docker-compose.env
+  postgres:
+    container_name: postgres
+    image: postgres
+    restart: always
     environment:
-      SERVICES: greeter
-    depends_on:
-      - nats
-      - redis
-    networks:
-      - internal
-
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: thisisApassword4mahasal_postgres
+      PGDATA: /data/postgres
+    volumes:
+      - ./docker/postgres:/data/postgres
+    ports:
+      - "5432:5432"
   nats:
     image: nats:2
     networks:

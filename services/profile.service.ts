@@ -5,6 +5,7 @@ import qs from 'qs';
 
 import api from "../shared/api";
 import endpoint from "../shared/endpoint";
+import jwt from "../shared/jwt";
 
 const ProfileService: ServiceSchema = {
 	name: "profile",
@@ -95,6 +96,14 @@ const ProfileService: ServiceSchema = {
 						token,
 					});
 
+					if (result.code == 0) {
+						ctx.emit('notification.send', {
+							accessToken: token,
+							to: user,
+							action: action
+						});
+					}
+
 					return {
 						status: result.code == 0,
 						code: 200,
@@ -120,20 +129,25 @@ const ProfileService: ServiceSchema = {
 				limit: {
 					type: "number",
 					min: 1,
-					max: 100,
-					default: 10,
+					// max: 100,
+					default: 12,
 					optional: true,
 					convert: true
 				},
 				type: {
 					type: 'enum',
-					values: ['newest', 'advertised', 'visited', 'favorited', 'favorites', 'blocked', 'blocks'],
-					default: 'newest'
+					values: ['search', 'newest', 'advertised', 'visited', 'favorited', 'favorites', 'blocked', 'blocks'],
+					default: 'search'
 				},
 				filters: {
 					type: "object",
 					default: {},
 				}
+			},
+			cache: {
+				enabled: ctx => ctx.meta.cache,
+				ttl: 120,
+				keys: ['type', 'page', 'limit'],
 			},
 			async handler(ctx) {
 				try {
@@ -184,6 +198,11 @@ const ProfileService: ServiceSchema = {
 							break;
 
 						case 'newest':
+							path = '/Panel/NewestUsers';
+							typeQueries = {
+								UserImages: true, isRandom: true
+							};
+							break;
 						default:
 							path = '/search';
 							break;
@@ -196,6 +215,8 @@ const ProfileService: ServiceSchema = {
 						...filters
 					});
 
+					const start = Date.now();
+
 					const result = await api.request({
 						path: `${path}?${queries}`,
 						method: 'GET',
@@ -205,8 +226,6 @@ const ProfileService: ServiceSchema = {
 					let output: any[] = [];
 
 					if (result.returnData) {
-
-
 						for (let item of result.returnData.items) {
 							let image = item.defaultImageUrl;
 
@@ -214,7 +233,9 @@ const ProfileService: ServiceSchema = {
 								image = item.userImagesURL;
 							}
 
-							image = endpoint.api + image;
+							if (image.startsWith('http') == false) {
+								image = 'https://s3.tv-92.com/uploads' + image;
+							}
 
 							const cityResult: any = await ctx.call('api.v1.dropdown.byGroupAndValue', {
 								key: "City",
@@ -230,7 +251,7 @@ const ProfileService: ServiceSchema = {
 								age: (() => {
 									const dur = moment.duration(moment().diff(moment(item.birthDate)));
 
-									return Math.round(dur.asYears());
+									return Math.round(dur.years());
 								})(),
 								seen: this.settings.seen[item.isOnlineByDateTime] ?? "offline",
 								plan: {
@@ -248,6 +269,8 @@ const ProfileService: ServiceSchema = {
 							last: result.returnData ? result.returnData.totalPages : 1,
 							page,
 							limit,
+							took: Date.now() - start,
+							filters: ctx.params,
 						},
 						data: output,
 					}
@@ -285,7 +308,7 @@ const ProfileService: ServiceSchema = {
 			cache: {
 				enabled: ctx => ctx.meta.cache,
 				ttl: 120,
-				keys: ['id', 'detailed'],
+				keys: ['id', 'detailed', '#id'],
 			},
 			async handler(ctx) {
 				try {
@@ -366,11 +389,18 @@ const ProfileService: ServiceSchema = {
 			cache: {
 				enabled: ctx => ctx.meta.cache,
 				ttl: 120,
-				keys: ['#token'],
+				keys: ['#id'],
 			},
 			async handler(ctx) {
 				try {
 					const token = ctx.meta.token;
+
+					if (!token) {
+						return {
+							code: 403,
+							i18n: 'FORBBIDEN'
+						}
+					}
 
 					const result: any = await api.request({
 						method: "GET",
@@ -388,26 +418,105 @@ const ProfileService: ServiceSchema = {
 					}
 				}
 			}
+		},
+		seen: {
+			visibility: 'published',
+			description: 'Get latest seen status of a user',
+			params: {
+				user: {
+					type: 'number',
+					convert: true,
+					min: 1
+				}
+			},
+			async handler(ctx) {
+				try {
+					const { user } = ctx.params;
+					const { token } = ctx.meta;
+
+					const result: any = await api.request({
+						method: "GET",
+						path: `/Profile/IsOnlineByDateTime?userId=${user}`,
+						token: token
+					});
+
+					return {
+						code: 200,
+						data: {
+							id: user,
+							seen: this.settings.seen[result] ?? "offline",
+						}
+					}
+				} catch (error) {
+					return {
+						code: 500
+					}
+				}
+			}
 		}
 	},
 
 	/**
 	 * Events
 	 */
-	events: {},
+	events: {
+		'socket.auth': async (ctx: any) => {
+			const { token, socket } = ctx.params;
+
+			try {
+				const data = jwt.extract(token);
+
+				if (data['sub']) {
+					const id = data['sub'];
+
+					ctx.emit('socket.room.join', {
+						'room': parseInt(id),
+						'socket': socket,
+					});
+					return;
+				}
+
+			} catch (error) {
+				//
+			}
+
+			try {
+				const resultOfMyProfile: any = await ctx.call('api.v1.profile.me', {}, {
+					meta: {
+						token,
+					}
+				});
+
+				if (resultOfMyProfile.code == 200) {
+					const id = resultOfMyProfile['data']['id'];
+
+					ctx.emit('socket.room.join', {
+						'room': id,
+						'socket': socket,
+					});
+				}
+			} catch (error) {
+				//
+			}
+		}
+	},
 
 	/**
 	 * Methods
 	 */
 	methods: {
 		async formatProfile(item: any, detailed: boolean = false, withToken: boolean = false) {
-			let image = item.defaultImageUrl;
+			let image: string = item.defaultImageUrl;
+			let canDeleteImage = false;
 
-			if (item.userImageConfirmed && item.userImagesURL) {
+			if (item.userImagesURL) {
 				image = item.userImagesURL;
+				canDeleteImage = true;
 			}
 
-			image = endpoint.format(image);
+			if (image.startsWith('http') == false) {
+				image = 'https://s3.tv-92.com/uploads' + image;
+			}
 
 			let details: any = {};
 			let dropdowns: any = {};
@@ -455,7 +564,7 @@ const ProfileService: ServiceSchema = {
 					details = result.data;
 				}
 
-				const birthDate =  moment(item.birthDate).locale('fa');
+				const birthDate = moment(item.birthDate).locale('fa');
 
 				details['childCount'] = item.childCount;
 				details['oldestChildAge'] = item.oldestChildAge;
@@ -480,35 +589,48 @@ const ProfileService: ServiceSchema = {
 			if (withToken) {
 				plan['sms'] = item.countSmsReminded;
 
-				const diff = (key = "") => {
+				const diff = (key = "", mode: 'days' | 'hours') => {
 					const value = item[key];
 
 					if (value) {
 						const dur = moment.duration(moment(value).diff(moment()));
 
-						return dur.asDays() <= 0 ? 0 : Math.round(dur.asDays());
+						if (mode == 'days') {
+							return dur.asDays() <= 0 ? 0 : Math.round(dur.asDays());
+						}
+
+						if (mode == 'hours') {
+							return dur.asHours() <= 0 ? 0 : Math.round(dur.asHours());
+						}
 					}
 
 					return 0;
 				}
 
-				plan['specialDays'] = diff('endDateSpecialAccount');
-				plan['adDays'] = diff('endDateAdvertisementAccount');
+				plan['specialDays'] = diff('endDateSpecialAccount', 'days');
+				plan['adDays'] = diff('endDateAdvertisementAccount', 'days');
+				plan['freeHours'] = diff('endDateFreeSpecialAccount', 'hours');
 			}
 
 			return {
 				id: item.id,
 				status: this.settings.status[item.latestUserLoginStatus * -10],
 				avatar: image,
+				defaultAvatar: !canDeleteImage,
 				fullname: `${item.name} ${item.family ?? ''}`.trim(),
 				phone: item.mobile,
 				verified: item.mobileConfirmed ?? false,
-				last: moment(item.latestUserActivity).locale('fa').format('dddd jDD jMMMM jYYYY ساعت HH:MM'),
-				ago: moment(item.latestUserActivity).locale('fa').fromNow(true),
+				last: item.latestUserActivity ? moment(item.latestUserActivity).locale('fa').format('dddd jDD jMMMM jYYYY ساعت HH:MM') : 'خیلی وقت پیش',
+				ago: item.latestUserActivity ? moment(item.latestUserActivity).locale('fa').fromNow(true) : 'خیلی وقت پیش',
 				seen: this.settings.seen[item.isOnlineByDateTime] ?? "offline",
+				age: (() => {
+					const dur = moment.duration(moment().diff(moment(item.birthDate)));
+
+					return Math.round(dur.years());
+				})(),
 				...details,
 				plan: {
-					free: item.endDateFreeSpecialAccount != null ? true : false,
+					free: item.endDateFreeSpecialAccount != null && plan && plan['freeHours'] != 0 ? true : false,
 					special: item.hasSpecialAccount ? true : false,
 					ad: item.hasAdvertisementAccount ? true : false,
 					...plan
@@ -516,6 +638,7 @@ const ProfileService: ServiceSchema = {
 				permission: {
 					voiceCall: item.allowVoiceCall,
 					videoCall: item.allowVideoCall,
+					notificationReaction: item.allowNotificationReaction,
 					notificationChat: item.allowNotificationChat,
 					notificationVoiceCall: item.allowNotificationVoiceCall,
 					notificationVideoCall: item.allowNotificationVideoCall,

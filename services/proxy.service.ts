@@ -57,25 +57,16 @@ const ProxyService: ServiceSchema = {
 					const { path, method, header, data } = ctx.params;
 					const token = ctx.meta.token;
 
-					const body = new FormData();					
-
-					Object.keys(data).forEach(key => {
-						if(data[key]) {
-							body.append(key, data[key]);
-						}						
-					});					
 
 					const result: any = await api.request({
 						method: method,
 						path: path,
 						token: token,
-						data: body,
+						data: data,
 						headers: {
 							...header,
-							// form data
-							'Content-Type': 'application/x-www-form-urlencoded',
 						}
-					});					
+					});
 
 					return {
 						code: 200,

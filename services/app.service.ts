@@ -22,8 +22,15 @@ const AppService: ServiceSchema = {
 		handshake: {
 			visibility: "published",
 			description: "In this action we are just returning application config and environment variables",
+			params: {
+				store: {
+					type: 'enum',
+					values: ['GOOGLEPLAY', 'MYKEY', 'CAFEBAZAAR', 'DIRECT', 'ANY'],
+					default: 'ANY'
+				}
+			},
 			async handler(ctx) {
-				const configs: any = await ctx.call('api.v1.config.all');
+				const configs: any = await ctx.call('api.v1.config.all', { store: ctx.params.store });
 
 				return {
 					code: 200,

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بازگشت از بانک</title>
+
+    <!-- noindex -->
+    <meta name="robots" content="noindex">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <style>
+        html {
+            overflow: hidden;
+        }
+
+        body {
+            margin: 0;
+
+            width: 100dvw;
+            height: 100dvh;
+
+            background: linear-gradient(180deg, #ff3c5c0d 10%, #f7b15b15 40%, #23bdab0d 50% 50%, #9a5bff14);
+
+            font-family: "Vazirmatn", sans-serif;
+        }
+
+        section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+
+            width: 100%;
+            height: 100%;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        div.loading {
+            width: 56px;
+            height: 56px;
+
+            border: 6px solid rgba(141, 45, 226, 0.3);
+            border-top-color: #8e2de2;
+
+            border-radius: 50%;
+
+            animation: loading 1s infinite;
+        }
+
+        br {
+            display: block;
+
+            min-height: 24px;
+        }
+
+        @keyframes loading {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .material-icons-round {
+            width: 64px;
+            height: 64px;
+
+            font-size: 64px;
+        }
+
+        strong {
+            font-size: 24px;
+        }
+
+        a#back {
+            padding: 10px 20px;
+
+            border-radius: 12px;
+
+            background: #8558ED;
+            color: white;
+
+            text-align: center;
+
+            z-index: 10;
+
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <section id="loading">
+        <div class="loading"></div>
+
+        <br />
+        <br />
+
+        <strong>در حال بازبینی</strong>
+    </section>
+
+    <section id="failed" class="hidden">
+        <span class="material-icons-round" style="color: #ef4444">
+            error_outline
+        </span>
+
+        <br />
+
+
+        <strong>خطایی رخ داده است</strong>
+
+        <p id="failed-message"></p>
+
+        <br />
+        <br />
+
+        <a onclick="sendMessageToFlutter('close')" href="https://mah-asal.info" id="back" class="hidden">
+            بازگشت به اپ
+        </a>
+    </section>
+
+    <section id="success" class="hidden">
+        <span class="material-icons-round" style="color: #10b981;">
+            check_circle_outline
+        </span>
+
+        <br />
+
+
+        <strong>پرداخت موفق</strong>
+
+        <p id="success-message"></p>
+
+        <br />
+        <br />
+
+        <a onclick="sendMessageToFlutter('close')" href="https://mah-asal.info" id="back" class="hidden">
+            بازگشت به اپ
+        </a>
+    </section>
+
+    <script>
+        const sendMessageToFlutter = (event = '', data = {}) => {
+            if (window.flutter != undefined) {
+                window.flutter.postMessage(JSON.stringify({ event, data }));
+            }
+        }
+
+        window.onload = () => {
+            const data = Object.fromEntries(new URLSearchParams(window.location.search).entries());
+
+            fetch('/api/v1/call/api.v1.plan.validate', {
+                method: 'post',
+                body: JSON.stringify({ data }),
+                headers: {
+                    'content-type': 'application/json'
+                }
+            }).then((res) => res.json())
+                .then((res) => {
+                    if (res['status']) {
+                        document.getElementById('loading').classList.add('hidden');
+                        document.getElementById('back').classList.remove('hidden');
+                        document.getElementById(res['data']['status']).classList.remove('hidden');
+                        document.getElementById(`${res['data']['status']}-message`).innerText = res['data']['message'];
+                    }
+                });
+        }
+    </script>
+</body>
+
+</html>

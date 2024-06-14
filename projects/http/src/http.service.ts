@@ -4,6 +4,9 @@ import path from "path";
 import fs from "fs";
 
 import { app, server, express, upload } from "./server";
+import jwt from "../../../shared/jwt";
+
+const __admins = path.join(process.cwd(), 'admins.json');
 
 const HttpService: ServiceSchema = {
     name: "http",
@@ -67,6 +70,20 @@ const HttpService: ServiceSchema = {
                 permission: action.action.permission,
                 nodes: action.endpoints.map((item: any) => item.nodeID)
             }
+        },
+        getAdmin(username: string, password: string) {
+            const data = fs.readFileSync(__admins).toString();
+            
+            const json = JSON.parse(data);
+
+            if(json[username] && json[username]['password'] == password) {
+                return {
+                    username,
+                    ...json[username]
+                }
+            } 
+
+            return null;
         }
     },
 
@@ -126,6 +143,15 @@ const HttpService: ServiceSchema = {
                 (req as any).meta.cache = true;
             }
 
+            if ((req as any).meta.token) {
+                try {
+                    const data = jwt.extract((req as any).meta.token);
+                    (req as any).meta.id = data['sub'];
+                } catch (error) {
+                    //
+                }
+            }
+
             const _resJson = res.json;
 
             (res as any).json = (body: any) => {
@@ -140,7 +166,30 @@ const HttpService: ServiceSchema = {
 
                 _resJson.call(res, body);
             }
+
             
+            if (req.headers['authorization']) {
+                const token: string = req.headers['authorization'].replace('Basic ', '');
+                (req as any).meta.accessToken = token;
+
+                const [username, password] = Buffer.from(token, 'base64').toString('ascii').split(':');
+
+                const accessData = this.getAdmin(username, password);
+
+                if(accessData) {
+                    (req as any).meta.accessData = accessData;
+                } else {
+                    return res.status(403).json({
+                        status: false,
+                        code: 403,
+                        i18n: 'FORBIDDEN',
+                        data: {
+                            error: 'Bad admin'
+                        }
+                    })
+                }
+            }
+
             next();
         });
 
@@ -255,7 +304,7 @@ const HttpService: ServiceSchema = {
 
         app.post('/api/v1/upload', upload.single('file'), (req, res) => {
             try {
-                if(!req.file) {
+                if (!req.file) {
                     return res.json({
                         status: false,
                         code: 400,
@@ -272,12 +321,13 @@ const HttpService: ServiceSchema = {
                     data: {
                         mimeType: req.file!.mimetype,
                         size: req.file!.size,
-                        url : (req.file as any).location,
+                        filename: req.file!.filename,
+                        url: (req as any).file_location ?? (req.file as any).location ?? req.file!.filename,
                     }
                 });
             } catch (error) {
                 console.error(error);
-                
+
                 res.status(500).json({
                     stauts: false,
                     code: 500,
@@ -289,15 +339,15 @@ const HttpService: ServiceSchema = {
 
         // call action
         app.all("/api/v1/call/:action", async (req, res) => {
+            // concat queries and body
+            const params = {
+                ...req.query,
+                ...req.body,
+            };
+
+            const action = req.params.action;
+
             try {
-                // concat queries and body
-                const params = {
-                    ...req.query,
-                    ...req.body,
-                };
-
-                const action = req.params.action;
-
                 (req as any).meta.action = action;
                 (req as any).meta.params = params;
 
@@ -326,7 +376,16 @@ const HttpService: ServiceSchema = {
                 if (foundAction.action.permission != undefined) {
                     const permission = foundAction.action.permission;
 
-                    // check permission
+                    if((req as any).meta.accessData == undefined) {
+                        return res.status(403).json({
+                            status: false,
+                            code: 403,
+                            i18n: 'FORBIDDEN',
+                            data: {
+                                error: 'Access denied'
+                            }
+                        })
+                    }
                 }
 
                 const result: any = await this.broker.call(action, params, {
@@ -351,11 +410,14 @@ const HttpService: ServiceSchema = {
                         code: 400,
                         i18n: 'BAD_DATA',
                         message: error.message,
+                        meta: {
+                            params,
+                        },
                         data: error.data.map((item: any) => ({
                             message: item.message,
                             field: item.field,
                             error: item.type
-                        }))
+                        })),
                     })
                 }
 

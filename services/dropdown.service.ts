@@ -66,14 +66,14 @@ const DropdownService: ServiceSchema = {
 			description: "In this action we are just returning list of dropdowns filtered by group key",
 			cache: {
 				enabled: true,
-				// ttl for 1 hour
-				ttl: 3600
+				ttl: 3600,
+				keys: ['key']
 			},
 			async handler(ctx) {
 				const { key } = ctx.params;
 
 				try {
-					const result: any[] = this.settings.dropdowns.filter((item: any) => item.group === key);
+					const result: any[] = this.settings.dropdowns.filter((item: any) => item.group.toLowerCase() === key.toLowerCase());
 
 					return {
 						code: 200,
@@ -105,9 +105,10 @@ const DropdownService: ServiceSchema = {
 			visibility: "published",
 			description: "In this action we are just returning list of dropdowns filtered by group key and value",
 			cache: {
-				enabled: false,
+				enabled: true,
 				// ttl for 1 hour
-				ttl: 3600
+				ttl: 3600,
+				keys: ['key', 'value']
 			},
 			async handler(ctx) {
 				const { key, value } = ctx.params;
@@ -141,7 +142,7 @@ const DropdownService: ServiceSchema = {
 			cache: {
 				enabled: false,
 				// ttl for 1 hour
-				ttl: 3600
+				ttl: 3600,
 			},
 			async handler(ctx) {
 				const { bulk } = ctx.params;

@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  id        Int    @id @default(autoincrement())
+  user      String
+  uuid      String
+  store     String
+  device    String
+  platform  String
+  brand     String
+  model     String
+  physical  String
+  version   String
+  screen    String
+  package   String
+  ip        String
+  timestamp BigInt
+}
+
+model Notification {
+  id       Int    @id @default(autoincrement())
+  user     String
+  device   String
+  firebase String @unique
+}
+
+model NotificationSend {
+  id        Int      @id @default(autoincrement())
+  user      String
+  device    String
+  firebase  String
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+}
+
+model Config {
+  id    Int    @id @default(autoincrement())
+  key   String
+  value String
+  store String
+}
+
+model FeedbackScore {
+  id        Int      @id @default(autoincrement())
+  user      String
+  score     String
+  message   String?
+  store     String
+  device    String
+  ip        String
+  createdAt DateTime @default(now())
+}
