@@ -3,6 +3,8 @@ import type { ServiceSchema } from "moleculer";
 import { Server } from "socket.io";
 
 import { server } from "../../http/src/server";
+import prisma from "../../../shared/prisma";
+import jwt from "../../../shared/jwt";
 
 const SocketService: ServiceSchema = {
     name: "socket",
@@ -171,27 +173,31 @@ const SocketService: ServiceSchema = {
 
             if (socket.handshake.headers['bearer']) {
                 (socket as any).meta.token = socket.handshake.headers['bearer'];
+                const tdata = jwt.extract((socket as any).meta.token);
+                (socket as any).meta.id = tdata['sub'];
 
                 this.broker.emit("socket.auth", {
                     socket,
                     token: (socket as any).meta.token,
+                    id: tdata['sub']
                 });
             }
 
             if (socket.handshake.query['bearer']) {
                 (socket as any).meta.token = socket.handshake.query['bearer'];
+                const tdata = jwt.extract((socket as any).meta.token);
+                (socket as any).meta.id = tdata['sub'];
 
                 this.broker.emit("socket.auth", {
                     socket,
                     token: (socket as any).meta.token,
+                    id: tdata['sub']
                 });
             }
 
             const _socketEmit = socket.emit;
 
-            (socket as any).emit = (event: string, data: any) => {
-                this.logger.info(`Socket event: ${event}`);
-
+            (socket as any).emit = async (event: string, data: any) => {
                 _socketEmit.call(socket, event, data);
             }
 
@@ -204,7 +210,9 @@ const SocketService: ServiceSchema = {
             socket.on("auth", (data) => {
                 if (data['token']) {
                     (socket as any).meta.token = data['token'];
-                    this.broker.emit("socket.auth", { socket, token: data['token'] });
+                    const tdata = jwt.extract((socket as any).meta.token);
+                    (socket as any).meta.id = tdata['sub'];
+                    this.broker.emit("socket.auth", { socket, token: data['token'], id: tdata['sub'] });
                 } else {
                     socket.emit("actions_response", {
                         status: false,
@@ -282,6 +290,8 @@ const SocketService: ServiceSchema = {
             socket.on('call', async (data) => {
                 const { action, params, id, cache } = data;
 
+                const start = Date.now();
+
                 try {
                     if (!action) {
                         return socket.emit("call_response", {
@@ -342,6 +352,26 @@ const SocketService: ServiceSchema = {
                     });
 
                     result.status = result.status ?? result.code == 200;
+
+                    const end = Date.now();
+
+                    await prisma.requestLog.create({
+                        data: {
+                            connection: "socket",
+                            node: process.env.NODEID as string,
+                            user: (socket as any).meta.id?.toString() ?? 'unknown',
+                            path: `/v1/call/${action}`,
+                            method: "EMIT",
+                            params: params ?? {},
+                            response: result ?? {},
+                            code: result['code'],
+                            cache: cache == true || cache == 'true' ? true : false,
+                            requestedAt: start,
+                            responsedAt: end,
+                            tookedFor: end - start,
+                            ip: (socket as any).meta.ip
+                        }
+                    });
 
                     socket.emit("call_response", {
                         status: true,

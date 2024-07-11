@@ -155,15 +155,27 @@ const HttpService: ServiceSchema = {
 
             const _resJson = res.json;
 
-            (res as any).json = (body: any) => {
+            (res as any).json = async (body: any) => {
                 (req as any).meta.responsedAt = Date.now();
                 (req as any).meta.response = body;
 
-                this.logger.info(
-                    `
-                        ${req.method.toUpperCase()} ${req.url} ${res.statusCode} ${(req as any).meta.responsedAt - (req as any).meta.requestedAt}ms
-                    `.trim()
-                )
+                await prisma.requestLog.create({
+                    data: {
+                        connection: "http",
+                        node: process.env.NODEID as string,
+                        user: (req as any).meta.id ?? 'unknown',
+                        path: req.path,
+                        method: req.method,
+                        params: (req as any).meta.params ?? {},
+                        response: body ?? {},
+                        code: body['code'],
+                        cache: (req as any).meta.cache,
+                        requestedAt: (req as any).meta.requestedAt,
+                        responsedAt: (req as any).meta.responsedAt,
+                        tookedFor: (req as any).meta.responsedAt - (req as any).meta.requestedAt,
+                        ip: (req as any).meta.ip,
+                    }
+                });
 
                 _resJson.call(res, body);
             }
