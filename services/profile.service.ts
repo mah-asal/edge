@@ -200,7 +200,7 @@ const ProfileService: ServiceSchema = {
 						case 'newest':
 							path = '/Panel/NewestUsers';
 							typeQueries = {
-								UserImages: true, isRandom: true
+								HasImage: 1, isRandom: true
 							};
 							break;
 						default:
