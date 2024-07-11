@@ -75,3 +75,31 @@ model File {
   filename String
   url      String
 }
+
+model PaymentLog {
+  id        Int      @id @default(autoincrement())
+  user      String
+  factor    String // factor id
+  price     Int
+  method    String
+  payied    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model RequestLog {
+  id          Int      @id @default(autoincrement())
+  node        String
+  connection  String   @default("http")
+  user        String?
+  path        String
+  method      String
+  params      Json
+  response    Json
+  code        Int      @default(200)
+  cache       Boolean  @default(false)
+  requestedAt BigInt   @default(0)
+  responsedAt BigInt   @default(0)
+  tookedFor   Int      @default(0)
+  ip          String
+  createdAt   DateTime @default(now())
+}
