@@ -32,7 +32,8 @@ const keys = [
 	"payment:card-color",
 	"payment:card-bank",
 	"cafebazaar:accessToken",
-	"cafebazaar:refreshToken"
+	"cafebazaar:refreshToken",
+	"myket:token"
 ].sort();
 
 const ConfigService: ServiceSchema = {

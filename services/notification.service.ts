@@ -40,7 +40,7 @@ const NotificationService: ServiceSchema = {
 					const { id: user } = ctx.meta;
 
 					// if device exists change it's userId
-					// const deviceExists = await this.adapter.find({ query: { device: device } });
+					// const deviceExists = await this.adapter.find({ query: { device: device } });					
 
 					const deviceExists = await prisma.notification.findFirst({
 						where: {
@@ -153,7 +153,7 @@ const NotificationService: ServiceSchema = {
 					}
 
 					for (let item of data) {
-						await this.settings.app.messaging().sendEach([{
+						const result = await this.settings.app.messaging().sendEach([{
 							notification: {
 								title: title,
 								body: body
@@ -167,7 +167,8 @@ const NotificationService: ServiceSchema = {
 								device: item.device,
 								firebase: item.firebase,
 								title: title,
-								body: body ?? ""
+								body: body ?? "",
+								sent: result['successCount'] == 1
 							}
 						});
 					}

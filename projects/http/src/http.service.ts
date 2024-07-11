@@ -5,6 +5,7 @@ import fs from "fs";
 
 import { app, server, express, upload } from "./server";
 import jwt from "../../../shared/jwt";
+import prisma from "../../../shared/prisma";
 
 const __admins = path.join(process.cwd(), 'admins.json');
 
@@ -73,15 +74,15 @@ const HttpService: ServiceSchema = {
         },
         getAdmin(username: string, password: string) {
             const data = fs.readFileSync(__admins).toString();
-            
+
             const json = JSON.parse(data);
 
-            if(json[username] && json[username]['password'] == password) {
+            if (json[username] && json[username]['password'] == password) {
                 return {
                     username,
                     ...json[username]
                 }
-            } 
+            }
 
             return null;
         }
@@ -124,7 +125,7 @@ const HttpService: ServiceSchema = {
         app.use((req, res, next) => {
             (req as any).meta = {
                 connectedBy: "http",
-                ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+                ip: req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket.remoteAddress,
                 userAgent: req.headers['user-agent'],
                 requestedAt: Date.now(),
                 responsedAt: null,
@@ -167,7 +168,7 @@ const HttpService: ServiceSchema = {
                 _resJson.call(res, body);
             }
 
-            
+
             if (req.headers['authorization']) {
                 const token: string = req.headers['authorization'].replace('Basic ', '');
                 (req as any).meta.accessToken = token;
@@ -176,7 +177,7 @@ const HttpService: ServiceSchema = {
 
                 const accessData = this.getAdmin(username, password);
 
-                if(accessData) {
+                if (accessData) {
                     (req as any).meta.accessData = accessData;
                 } else {
                     return res.status(403).json({
@@ -302,7 +303,7 @@ const HttpService: ServiceSchema = {
             }
         });
 
-        app.post('/api/v1/upload', upload.single('file'), (req, res) => {
+        app.post('/api/v1/upload', upload.single('file'), async (req, res) => {
             try {
                 if (!req.file) {
                     return res.json({
@@ -313,17 +314,32 @@ const HttpService: ServiceSchema = {
                     });
                 }
 
+                const data = {
+                    mimeType: req.file!.mimetype,
+                    size: req.file!.size,
+                    filename: req.file!.filename,
+                    url: (req as any).file_location ?? (req.file as any).location ?? req.file!.filename,
+                };
+
+                const hash: string = req.query['hash'] as string;
+
+                if (hash) {
+                    await prisma.file.create({
+                        data: {
+                            user: (req.query['id'] as string || req.query['user'] as string) ?? '0',
+                            hash: hash,
+                            ...data,
+                            size: data.size ?? 0,
+                        }
+                    });
+                }
+
                 res.json({
                     status: true,
                     code: 200,
                     i18n: 'FILE_UPLOADED',
                     message: 'File uploaded successfully',
-                    data: {
-                        mimeType: req.file!.mimetype,
-                        size: req.file!.size,
-                        filename: req.file!.filename,
-                        url: (req as any).file_location ?? (req.file as any).location ?? req.file!.filename,
-                    }
+                    data: data,
                 });
             } catch (error) {
                 console.error(error);
@@ -376,7 +392,7 @@ const HttpService: ServiceSchema = {
                 if (foundAction.action.permission != undefined) {
                     const permission = foundAction.action.permission;
 
-                    if((req as any).meta.accessData == undefined) {
+                    if ((req as any).meta.accessData == undefined) {
                         return res.status(403).json({
                             status: false,
                             code: 403,

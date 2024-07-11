@@ -44,6 +44,7 @@ model NotificationSend {
   firebase  String
   title     String
   body      String
+  sent      Boolean  @default(false)
   createdAt DateTime @default(now())
 }
 
@@ -63,4 +64,14 @@ model FeedbackScore {
   device    String
   ip        String
   createdAt DateTime @default(now())
+}
+
+model File {
+  id       Int    @id @default(autoincrement())
+  user     String
+  hash     String
+  mimeType String
+  size     Int
+  filename String
+  url      String
 }

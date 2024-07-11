@@ -20,7 +20,7 @@ const PlanService: ServiceSchema = {
 			'3': 'ad'
 		},
 		cafebazaarAccessToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjEyNzM2MjUsInVzZXJfaWQiOjY3OTcxNTkzLCJzY29wZXMiOlsiYW5kcm9pZHB1Ymxpc2hlciJdfQ.FWH00AdTKWG3QCF9h2J34oWKy5GoGs6nAJ2up4145JIcIZeazzNFrtYgaGPDJVbSrIAx8zaYMItJgimz6c2yZpDO5NphAAsHiNjXd5-MJln1PQREIeQB0y7ni7VJ2Mgy4S9NC3y7nc6my73TLL0WcyhwEGj2udvVdFgH0WkhXy_L0x0W85Gf--6AuQS8ipyUG6zYKRhHHAHJ4p8DCBeGd5GnVJZgB2Cag4Sq--TxZjtb0xUlakXpmQU53sSbX6drdgPxrNv8DFT8UPLffMaO8FAy3NK2g6Ysxel8bbRSdYPxPVHzr0HovrmsFPcZCSGKE4v5bMjrpA5p3uJi7VuY52yBEzfn_EEu8PIinf_BisqmTcPnShnpWbGRCFVRKGGTJOgl0swiQhDxSAXjxc97Kiht8LzEq9H9cZHRV6sxn8R3GKgoql-NTQlSvb_0xyc7c6k090F_mOGE0-vX8fpkUAsAMSKjvOKJfNdL0047DEfxkJOnf6lrMxUefsYeHY0srWKv7Gs7MS9R-EvTZmKIkMetv5mf6V4YrPXWiZoAdFEpaCniRtbOaLVByx73XvAXR4EqDvPNnPzHiMOOVoN9I9W3GD63pM975uSe644gJ5mIMxJY07pQQNOfJTHqf6lJgrLThvXhVgAREIfNSwDMaaPN06IGMWbaAwiic30t3vs",
-		cafebazaarRefreshToken: "8zNrnnfkLqpw1Kl72mUbmBjYNFc184"
+		myketToken: "fbc2e22e-c857-4269-a534-8d1f30c81c87",
 	},
 
 	/**
@@ -38,7 +38,7 @@ const PlanService: ServiceSchema = {
 			params: {
 				store: {
 					type: 'enum',
-					values: ['default', 'cafebazaar'],
+					values: ['default', 'cafebazaar', 'myket'],
 					default: 'default'
 				}
 			},
@@ -78,6 +78,10 @@ const PlanService: ServiceSchema = {
 
 					if (store == 'cafebazaar') {
 						data = data.filter((item: any) => item['store'] == 'bazar')
+					}
+
+					if (store == 'myket') {
+						data = data.filter((item: any) => item['store'] == 'myket')
 					}
 
 					data.sort((a: any, b: any) => {
@@ -181,7 +185,7 @@ const PlanService: ServiceSchema = {
 			params: {
 				method: {
 					type: 'enum',
-					values: ['gateway', 'card', 'cafebazaar'],
+					values: ['gateway', 'card', 'cafebazaar', 'myket'],
 					default: 'gateway'
 				},
 				card: {
@@ -224,10 +228,10 @@ const PlanService: ServiceSchema = {
 					optional: true,
 					default: null
 				},
-				cafebazaar: {
+				data: {
 					type: "object",
 					props: {
-						product: {
+						sku: {
 							type: 'number',
 							convert: true
 						},
@@ -241,7 +245,7 @@ const PlanService: ServiceSchema = {
 			},
 			async handler(ctx) {
 				try {
-					const { method, card, cafebazaar } = ctx.params;
+					const { method, card, data: inapp } = ctx.params;
 					const { token, id } = ctx.meta;
 
 					let data: any = undefined;
@@ -318,8 +322,8 @@ const PlanService: ServiceSchema = {
 					}
 
 					if (method == 'cafebazaar') {
-						const { product, token: purchasesToken } = cafebazaar;
-						const url = `https://pardakht.cafebazaar.ir/devapi/v2/api/validate/com.mahasal.app.mahasal/inapp/${product}/purchases/${purchasesToken}?access_token=${this.settings.cafebazaarAccessToken}`;
+						const { sku, token: purchasesToken } = inapp;
+						const url = `https://pardakht.cafebazaar.ir/devapi/v2/api/validate/com.mahasal.app.mahasal/inapp/${sku}/purchases/${purchasesToken}?access_token=${this.settings.cafebazaarAccessToken}`;
 
 						const result = await axios.get(url);
 
@@ -333,8 +337,36 @@ const PlanService: ServiceSchema = {
 									token: token
 								});
 
-								console.log(result);
-								
+
+								if (result.code == 0) {
+									data = {
+
+									};
+								}
+							}
+						}
+					}
+
+					if (method == "myket") {
+						const { sku, token: purchasesToken } = inapp;
+						const url = `https://developer.myket.ir/api/partners/applications/com.mahasal.app.mahasal/purchases/products/${sku}/tokens/${purchasesToken}`;
+
+						const result = await axios.get(url, {
+							headers: {
+								'X-Access-Token': this.settings.myketToken
+							}
+						});
+
+						if (result.status == 200) {
+							const { consumptionState } = result.data;
+
+							if (consumptionState == 0) {
+								const result = await api.request({
+									method: 'GET',
+									path: `/factor/PayForce`,
+									token: token
+								});
+
 
 								if (result.code == 0) {
 									data = {
@@ -414,8 +446,8 @@ const PlanService: ServiceSchema = {
 		'config.changed'(ctx: any) {
 			if (ctx.params['cafebazaar:accessToken'])
 				this.settings.cafebazaarAccessToken = ctx.params['cafebazaar:accessToken'];
-			if (ctx.params['cafebazaar:refreshToken'])
-				this.settings.cafebazaarRefreshToken = ctx.params['cafebazaar:refreshToken'];
+			if (ctx.params['myket:token'])
+				this.settings.myketToken = ctx.params['myket:token'];
 		}
 	},
 
@@ -444,10 +476,10 @@ const PlanService: ServiceSchema = {
 				}
 			});
 			this.broker.call('api.v1.config.get', {
-				key: 'cafebazaar:refreshToken'
+				key: 'myket:token'
 			}).then((res: any) => {
 				if (res['status'] && res['data']) {
-					this.settings.cafebazaarRefreshToken = res['data'];
+					this.settings.myketToken = res['data'];
 				}
 			});
 		}, 1000);
