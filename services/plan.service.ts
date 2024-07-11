@@ -5,6 +5,7 @@ import cheerio from "cheerio";
 import axios from "axios";
 import qs from "qs";
 import api from "../shared/api";
+import prisma from "../shared/prisma";
 
 const PlanService: ServiceSchema = {
 	name: "plan",
@@ -253,8 +254,24 @@ const PlanService: ServiceSchema = {
 
 					const start = Date.now();
 
-					if (method == 'gateway') {
+					// 1. get current factor
+					const current = await api.request({
+						method: 'GET',
+						path: '/Plan/ShowCurrentFactor',
+						token: token,
+					});
 
+					const price = current['price'] ?? 0;
+					const factor = current['id'];
+
+					if (price == 0) {
+						return {
+							code: 400,
+							i18n: 'PRICE_IS_ZERO'
+						}
+					}
+
+					if (method == 'gateway') {
 						const configOfBankRedirectEndpoint: any = await ctx.call('api.v1.config.get', {
 							key: 'endpoint:bank:redirect',
 						});
@@ -274,6 +291,16 @@ const PlanService: ServiceSchema = {
 								data = {
 									url: url,
 								};
+
+								await prisma.paymentLog.create({
+									data: {
+										user: id.toString(),
+										factor: factor.toString(),
+										price: price,
+										method: method,
+										payied: false,
+									}
+								});
 							}
 						}
 					}
@@ -318,6 +345,16 @@ const PlanService: ServiceSchema = {
 						if (result.returnData) {
 							data = result;
 							i18n = 'REQUEST_SUBMITED'
+
+							await prisma.paymentLog.create({
+								data: {
+									user: id.toString(),
+									factor: factor.toString(),
+									price: price,
+									method: method,
+									payied: true,
+								}
+							});
 						}
 					}
 
@@ -342,6 +379,16 @@ const PlanService: ServiceSchema = {
 									data = {
 
 									};
+
+									await prisma.paymentLog.create({
+										data: {
+											user: id.toString(),
+											factor: factor.toString(),
+											price: price,
+											method: method,
+											payied: true,
+										}
+									});
 								}
 							}
 						}
@@ -372,6 +419,16 @@ const PlanService: ServiceSchema = {
 									data = {
 
 									};
+
+									await prisma.paymentLog.create({
+										data: {
+											user: id.toString(),
+											factor: factor.toString(),
+											price: price,
+											method: method,
+											payied: true,
+										}
+									});
 								}
 							}
 						}
@@ -416,6 +473,26 @@ const PlanService: ServiceSchema = {
 						path: `/Factor/BankBack?${queries}`,
 						token: token
 					});
+
+					// 1. get current factor
+					const current = await api.request({
+						method: 'GET',
+						path: '/Plan/ShowCurrentFactor',
+						token: token,
+					});
+
+					const factor = current['id'];
+
+					if (factor) {
+						await prisma.paymentLog.updateMany({
+							where: {
+								factor: factor.toString()
+							}, data: {
+								payied: result.code == 0
+							}
+						});
+					}
+
 
 					return {
 						code: 200,
