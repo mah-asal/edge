@@ -32,7 +32,7 @@ const brokerConfig: BrokerOptions = {
 	// Namespace of nodes to segment your nodes on the same network.
 	namespace: "mahasal",
 	// Unique node identifier. Must be unique in a namespace.
-	nodeID: "edge",
+	nodeID: process.env.NODEID ?? "edge",
 	// Custom metadata store. Store here what you want. Accessing: `this.broker.metadata`
 	metadata: {},
 
