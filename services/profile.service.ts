@@ -331,6 +331,17 @@ const ProfileService: ServiceSchema = {
 						}
 					}
 
+					if(!result.returnData) {
+						return {
+							code: 200,
+							data: {
+								error: 'LEAVE_FOR_EVER',
+								profile: null
+							}
+						}
+						
+					}
+
 					// handle user status
 					const status = result.returnData.latestUserLoginStatus;
 
