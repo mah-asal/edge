@@ -193,9 +193,6 @@ const UserService: ServiceSchema = {
 						token,
 					});
 
-					console.log(result);
-
-
 					return {
 						status: result['code'] == 0,
 						code: 200,
