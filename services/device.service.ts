@@ -72,15 +72,21 @@ const DeviceService: ServiceSchema = {
 						ip,
 						user: id.toString()
 					};
+					
+					// update user to latest version
+					await prisma.device.updateMany({
+						where: {
+							user: id.toString()
+						},
+						data: {
+							updated: true
+						}
+					});
 
 					await prisma.device.create({
 						data,
 					});
 
-					ctx.emit('telegram.send', {
-						type: 'handshake',
-						data: data,
-					});
 
 					return {
 						code: 200
@@ -88,43 +94,6 @@ const DeviceService: ServiceSchema = {
 				} catch (error) {
 					console.error(error);
 
-					return {
-						code: 500
-					}
-				}
-			}
-		},
-		byUser: {
-			visibility: 'published',
-			description: 'Get list of user devices',
-			permission: ['api.v1.device.byUser'],
-			params: {
-				user: {
-					type: 'string',
-					convert: true
-				}
-			},
-			async handler(ctx) {
-				try {
-					const { user } = ctx.params;
-
-					const result = await prisma.device.findMany({
-						where: {
-							user: user,
-						}
-					});
-
-					return {
-						code: 200,
-						meta: {
-							total: result.length,
-						},
-						data: result.map((item) => ({
-							...item,
-							timestamp: Number(item.timestamp)
-						}))
-					}
-				} catch (error) {
 					return {
 						code: 500
 					}

@@ -28,6 +28,7 @@ model Device {
   package   String
   ip        String
   timestamp BigInt
+  updated   Boolean @default(false) // updated to latest version
 }
 
 model Notification {

@@ -187,41 +187,7 @@ const NotificationService: ServiceSchema = {
 					}
 				}
 			}
-		},
-		byUser: {
-			visibility: 'published',
-			description: 'Get list of user notifications',
-			permission: ['api.v1.notification.byUser'],
-			params: {
-				user: {
-					type: 'string',
-					convert: true
-				}
-			},
-			async handler(ctx) {
-				try {
-					const { user } = ctx.params;
-
-					const result = await prisma.notificationSend.findMany({
-						where: {
-							user: user,
-						}
-					});
-
-					return {
-						code: 200,
-						meta: {
-							total: result.length,
-						},
-						data: result
-					}
-				} catch (error) {
-					return {
-						code: 500
-					}
-				}
-			}
-		},
+		}
 	},
 
 	/**

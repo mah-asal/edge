@@ -77,67 +77,6 @@ const FeedbackService: ServiceSchema = {
 				}
 			}
 		},
-		list: {
-			visibility: 'published',
-			description: 'Get list of feedbacks',
-			permission: ['api.v1.feedback.list'],
-			params: {
-				page: {
-					type: 'number',
-					convert: true,
-					min: 1,
-					default: 1
-				},
-				limit: {
-					type: 'number',
-					convert: true,
-					min: 10,
-					max: 100,
-					default: 10
-				}
-			},
-			async handler(ctx) {
-				try {
-					const { page, limit } = ctx.params;
-
-					const start = Date.now();
-
-					const [count, feedbacks] = await prisma.$transaction([
-						prisma.feedbackScore.count({
-							where: {
-
-							},
-						}),
-						prisma.feedbackScore.findMany({
-							skip: (page - 1) * limit,
-							take: limit,
-							orderBy: {
-								id: "desc",
-							},
-							where: {
-
-							},
-						}),
-					]);
-
-					return {
-						code: 200,
-						meta: {
-							page,
-							limit,
-							total: count,
-							last: Math.max(Math.ceil(count / limit), 1),
-							took: Date.now() - start,
-						},
-						data: feedbacks,
-					}
-				} catch (error) {
-					return {
-						code: 500
-					}
-				}
-			},
-		},
 		count: {
 			visibility: 'published',
 			description: 'Get count of notifications by scores',
