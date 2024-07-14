@@ -115,6 +115,55 @@ const ProfileService: ServiceSchema = {
 				}
 			}
 		},
+		home: {
+			visibility: 'published',
+			description: 'Get home page profiles',
+			async handler(ctx) {
+				try {
+					const start = Date.now();
+
+					const [advertised, visited, newest]: any[] = await Promise.all([
+						ctx.call('api.v1.profile.search', {
+							limit: 4,
+							type: 'advertised'
+						}, {
+							meta: ctx.meta
+						}),
+						ctx.call('api.v1.profile.search', {
+							limit: 4,
+							type: 'visited'
+						}, {
+							meta: ctx.meta
+						}),
+						ctx.call('api.v1.profile.search', {
+							limit: 4,
+							type: 'newest',
+							filters: {
+								HasImage: 1
+							}
+						}, {
+							meta: ctx.meta
+						}),
+					]);
+
+					return {
+						code: 200,
+						meta: {
+							took: Date.now() - start,
+						},
+						data: {
+							advertised: advertised['data'], 
+							visited: visited['data'], 
+							newest: newest['data'],
+						}
+					}
+				} catch (error) {
+					return {
+						code: 500
+					}
+				}
+			}
+		},
 		search: {
 			visibility: 'published',
 			description: 'Search in profiles with filters',
@@ -129,7 +178,7 @@ const ProfileService: ServiceSchema = {
 				limit: {
 					type: "number",
 					min: 1,
-					// max: 100,
+					max: 100,
 					default: 12,
 					optional: true,
 					convert: true
@@ -200,7 +249,7 @@ const ProfileService: ServiceSchema = {
 						case 'newest':
 							path = '/Panel/NewestUsers';
 							typeQueries = {
-								HasImage: 1, isRandom: true
+								isRandom: true
 							};
 							break;
 						default:
@@ -208,14 +257,18 @@ const ProfileService: ServiceSchema = {
 							break;
 					}
 
-					const queries = qs.stringify({
+					let queries = qs.stringify({
 						pageIndex: page - 1,
 						pageSize: limit,
 						...typeQueries,
-						...filters
+						...filters,
 					});
 
 					const start = Date.now();
+
+					if(queries.includes('&HasImage=0')) {
+						queries = queries.replace('&HasImage=0', '');
+					}
 
 					const result = await api.request({
 						path: `${path}?${queries}`,
@@ -227,15 +280,11 @@ const ProfileService: ServiceSchema = {
 
 					if (result.returnData) {
 						for (let item of result.returnData.items) {
-							let image = item.defaultImageUrl;
-
-							if (item.userImageConfirmed && item.userImagesURL) {
-								image = item.userImagesURL;
-							}
+							let image = item.userImagesURL;
 
 							if (image.startsWith('http') == false) {
 								image = 'https://s3.tv-92.com/uploads' + image;
-							}
+							}							
 
 							const cityResult: any = await ctx.call('api.v1.dropdown.byGroupAndValue', {
 								key: "City",
@@ -331,7 +380,7 @@ const ProfileService: ServiceSchema = {
 						}
 					}
 
-					if(!result.returnData) {
+					if (!result.returnData) {
 						return {
 							code: 200,
 							data: {
@@ -339,7 +388,7 @@ const ProfileService: ServiceSchema = {
 								profile: null
 							}
 						}
-						
+
 					}
 
 					// handle user status
@@ -520,7 +569,7 @@ const ProfileService: ServiceSchema = {
 			let image: string = item.defaultImageUrl;
 			let canDeleteImage = false;
 
-			if (item.userImagesURL) {
+			if (item.userImagesURL && !item.userImagesURL.includes('static')) {
 				image = item.userImagesURL;
 				canDeleteImage = true;
 			}
