@@ -649,7 +649,7 @@ const ProfileService: ServiceSchema = {
 			if (withToken) {
 				plan['sms'] = item.countSmsReminded;
 
-				const diff = (key = "", mode: 'days' | 'hours') => {
+				const diff = (key = "", mode: 'days' | 'hours' | 'minutes') => {
 					const value = item[key];
 
 					if (value) {
@@ -662,6 +662,10 @@ const ProfileService: ServiceSchema = {
 						if (mode == 'hours') {
 							return dur.asHours() <= 0 ? 0 : Math.round(dur.asHours());
 						}
+
+						if (mode == 'minutes') {
+							return dur.asMinutes() <= 0 ? 0 : Math.round(dur.asMinutes());
+						}
 					}
 
 					return 0;
@@ -670,6 +674,7 @@ const ProfileService: ServiceSchema = {
 				plan['specialDays'] = diff('endDateSpecialAccount', 'days');
 				plan['adDays'] = diff('endDateAdvertisementAccount', 'days');
 				plan['freeHours'] = diff('endDateFreeSpecialAccount', 'hours');
+				plan['freeMinutes'] = diff('endDateFreeSpecialAccount', 'minutes');
 			}
 
 			return {
