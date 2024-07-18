@@ -20,7 +20,7 @@ const PlanService: ServiceSchema = {
 			'1': 'sms',
 			'3': 'ad'
 		},
-		cafebazaarAccessToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjEyNzM2MjUsInVzZXJfaWQiOjY3OTcxNTkzLCJzY29wZXMiOlsiYW5kcm9pZHB1Ymxpc2hlciJdfQ.FWH00AdTKWG3QCF9h2J34oWKy5GoGs6nAJ2up4145JIcIZeazzNFrtYgaGPDJVbSrIAx8zaYMItJgimz6c2yZpDO5NphAAsHiNjXd5-MJln1PQREIeQB0y7ni7VJ2Mgy4S9NC3y7nc6my73TLL0WcyhwEGj2udvVdFgH0WkhXy_L0x0W85Gf--6AuQS8ipyUG6zYKRhHHAHJ4p8DCBeGd5GnVJZgB2Cag4Sq--TxZjtb0xUlakXpmQU53sSbX6drdgPxrNv8DFT8UPLffMaO8FAy3NK2g6Ysxel8bbRSdYPxPVHzr0HovrmsFPcZCSGKE4v5bMjrpA5p3uJi7VuY52yBEzfn_EEu8PIinf_BisqmTcPnShnpWbGRCFVRKGGTJOgl0swiQhDxSAXjxc97Kiht8LzEq9H9cZHRV6sxn8R3GKgoql-NTQlSvb_0xyc7c6k090F_mOGE0-vX8fpkUAsAMSKjvOKJfNdL0047DEfxkJOnf6lrMxUefsYeHY0srWKv7Gs7MS9R-EvTZmKIkMetv5mf6V4YrPXWiZoAdFEpaCniRtbOaLVByx73XvAXR4EqDvPNnPzHiMOOVoN9I9W3GD63pM975uSe644gJ5mIMxJY07pQQNOfJTHqf6lJgrLThvXhVgAREIfNSwDMaaPN06IGMWbaAwiic30t3vs",
+		cafebazaarAccessToken: "",
 		myketToken: "fbc2e22e-c857-4269-a534-8d1f30c81c87",
 	},
 
@@ -271,6 +271,16 @@ const PlanService: ServiceSchema = {
 						}
 					}
 
+					const log = await prisma.paymentLog.create({
+						data: {
+							user: id.toString(),
+							factor: factor.toString(),
+							price: price,
+							method: method,
+							payied: false,
+						}
+					});
+
 					if (method == 'gateway') {
 						const configOfBankRedirectEndpoint: any = await ctx.call('api.v1.config.get', {
 							key: 'endpoint:bank:redirect',
@@ -292,15 +302,7 @@ const PlanService: ServiceSchema = {
 									url: url,
 								};
 
-								await prisma.paymentLog.create({
-									data: {
-										user: id.toString(),
-										factor: factor.toString(),
-										price: price,
-										method: method,
-										payied: false,
-									}
-								});
+
 							}
 						}
 					}
@@ -362,11 +364,12 @@ const PlanService: ServiceSchema = {
 						const { sku, token: purchasesToken } = inapp;
 						const url = `https://pardakht.cafebazaar.ir/devapi/v2/api/validate/com.mahasal.app.mahasal/inapp/${sku}/purchases/${purchasesToken}?access_token=${this.settings.cafebazaarAccessToken}`;
 
-						const result = await axios.get(url);
+						const result = await axios.get(url);						
 
 						if (result.status == 200) {
 							const { consumptionState } = result.data;
 
+						
 							if (consumptionState == 0) {
 								const result = await api.request({
 									method: 'GET',
@@ -380,13 +383,12 @@ const PlanService: ServiceSchema = {
 
 									};
 
-									await prisma.paymentLog.create({
+									await prisma.paymentLog.update({
+										where: {
+											id: log.id
+										},
 										data: {
-											user: id.toString(),
-											factor: factor.toString(),
-											price: price,
-											method: method,
-											payied: true,
+											payied: true
 										}
 									});
 								}
@@ -420,13 +422,12 @@ const PlanService: ServiceSchema = {
 
 									};
 
-									await prisma.paymentLog.create({
+									await prisma.paymentLog.update({
+										where: {
+											id: log.id
+										},
 										data: {
-											user: id.toString(),
-											factor: factor.toString(),
-											price: price,
-											method: method,
-											payied: true,
+											payied: true
 										}
 									});
 								}
@@ -548,14 +549,16 @@ const PlanService: ServiceSchema = {
 			this.broker.call('api.v1.config.get', {
 				key: 'cafebazaar:accessToken'
 			}).then((res: any) => {
-				if (res['status'] && res['data']) {
+				if (res['code'] == 200 && res['data']) {
 					this.settings.cafebazaarAccessToken = res['data'];
+
+					
 				}
-			});
+			}).catch(console.error)
 			this.broker.call('api.v1.config.get', {
 				key: 'myket:token'
 			}).then((res: any) => {
-				if (res['status'] && res['data']) {
+				if (res['code'] == 200 && res['data']) {
 					this.settings.myketToken = res['data'];
 				}
 			});

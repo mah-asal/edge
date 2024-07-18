@@ -125,7 +125,7 @@ const TransactionService: ServiceSchema = {
                         },
                         data: {
                             id: id,
-                            total: result['price'],
+                            total: result['price'] ?? 0,
                             method: result['isPayByCard'] ? 'کارت به کارت' : 'پرداخت آنلاین',
                             bank: result['bankName'],
                             card: result['cardNumber'] == 'True' ? null : result['cardNumber'],

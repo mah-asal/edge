@@ -16,6 +16,7 @@ const keys = [
 	"app:deprecated-version",
 	"config:free-account-time",
 	"config:free-account-visable",
+	"config:free-account-active-automatically",
 	"config:visitation-hours",
 	"config:invitation-message",
 	"config:captcha",
@@ -58,7 +59,6 @@ const ConfigService: ServiceSchema = {
 		all: {
 			visibility: "published",
 			description: "In this action we are just returning application config",
-			permission: ["api.v1.config.all"],
 			params: {
 				store: {
 					type: 'enum',

@@ -422,6 +422,10 @@ const HttpService: ServiceSchema = {
 
                 result.status = result.status ?? result.code == 200;
 
+                if (result.code == 301 && result.data && typeof result.data == 'string') {
+                    res.status(301).redirect(result.data);
+                }
+
                 res.status(result.code ?? 200).json({
                     status: result.status,
                     code: result.code ?? 200,

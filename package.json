@@ -8,7 +8,7 @@
     "migrate": "prisma migrate dev --name init",
     "build": "tsc --project tsconfig.build.json",
     "dev": "ts-node ./node_modules/moleculer/bin/moleculer-runner.js --config moleculer.config.ts --hot --repl services/**/*.service.ts --repl projects/**/*.service.ts",
-    "test": "PORT=9300 CONFIG_SUFFIX=\"#mahasal:dev:\"  npm run dev",
+    "test": "PORT=9300 NODEID=edge@test  CONFIG_SUFFIX=\"#mahasal:dev:\"  npm run dev",
     "start": "moleculer-runner --config dist/moleculer.config.js --repl dist/**/**/*.service.js",
     "test:types": "concurrently npm:prettier npm:typecheck",
     "typecheck": "tsc --noEmit && echo \"tsc: no typecheck errors\"",

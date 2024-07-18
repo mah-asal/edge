@@ -28,9 +28,14 @@ const AdminService: ServiceSchema = {
 				try {
 					const start = Date.now();
 
-					const [resultOfUsers, resultOfOnlines, resultOfFeedbacks, [resultOfApps, resultOfDevices, resultOfNotifications, resultOfSuccessfullSentNotifications, resultOfFailedSentNotifications, resultOfPackages, resultOfStores, resultOfVersions, resultOfBrands, resultOfTotalPayments]]: any = await Promise.all([
+					const [resultOfUsers, resultOfFranceOnlines, resultOfIranOnlines, resultOfFeedbacks, [resultOfApps, resultOfDevices, resultOfNotifications, resultOfSuccessfullSentNotifications, resultOfFailedSentNotifications, resultOfPackages, resultOfStores, resultOfVersions, resultOfBrands, resultOfTotalPayments]]: any = await Promise.all([
 						ctx.call('api.v1.profile.search', { limit: 1 }),
-						ctx.call('v1.socket.onlines'),
+						ctx.call('v1.socket.onlines', {}, {
+							nodeID: 'edge@france'
+						}),
+						ctx.call('v1.socket.onlines', {}, {
+							nodeID: 'edge@iran'
+						}),
 						ctx.call('api.v1.feedback.count'),
 						prisma.$transaction([
 							prisma.$queryRaw`SELECT COUNT(DISTINCT("user")) FROM "Device" WHERE updated='false'`,
@@ -38,11 +43,11 @@ const AdminService: ServiceSchema = {
 							prisma.$queryRaw`SELECT COUNT(*) FROM "Notification"`,
 							prisma.$queryRaw`SELECT COUNT(*) FROM "NotificationSend" WHERE sent='true'`,
 							prisma.$queryRaw`SELECT COUNT(*) FROM "NotificationSend" WHERE sent='false'`,
-							prisma.$queryRaw`SELECT COUNT(DISTINCT("uuid")), package FROM "Device" WHERE updated='false' GROUP BY package`,
-							prisma.$queryRaw`SELECT COUNT(DISTINCT("uuid")), store FROM "Device" WHERE updated='false' GROUP BY store`,
-							prisma.$queryRaw`SELECT COUNT(DISTINCT("uuid")), version FROM "Device" WHERE updated='false' GROUP BY version`,
-							prisma.$queryRaw`SELECT COUNT(DISTINCT(uuid)), LOWER(brand) FROM public."Device" GROUP BY LOWER(brand)`,
-							prisma.$queryRaw`SELECT SUM(price) as total FROM public."PaymentLog"`
+							prisma.$queryRaw`SELECT COUNT(DISTINCT("user")), package FROM "Device" WHERE updated='false' GROUP BY package`,
+							prisma.$queryRaw`SELECT COUNT(DISTINCT("user")), store FROM "Device" WHERE updated='false' GROUP BY store`,
+							prisma.$queryRaw`SELECT COUNT(DISTINCT("user")), version FROM "Device" WHERE updated='false' GROUP BY version`,
+							prisma.$queryRaw`SELECT COUNT(DISTINCT("user")), LOWER(brand) FROM public."Device" GROUP BY LOWER(brand)`,
+							prisma.$queryRaw`SELECT SUM(price) as total FROM public."PaymentLog" WHERE payied='true'`
 						]),
 					]);
 
@@ -62,7 +67,7 @@ const AdminService: ServiceSchema = {
 						data: {
 							feedback: resultOfFeedbacks['data'],
 							users: Number(resultOfUsers['meta']['total']).toLocaleString('fa-IR'),
-							onlines: Number(resultOfOnlines['data']).toLocaleString('fa-IR'),
+							onlines: Number(resultOfFranceOnlines['data'] + resultOfIranOnlines['data']).toLocaleString('fa-IR'),
 							apps: Number(resultOfApps[0]['count']).toLocaleString('fa-IR'),
 							devices: Number(resultOfDevices[0]['count']).toLocaleString('fa-IR'),
 							notifications: Number(resultOfNotifications[0]['count']).toLocaleString('fa-IR'),
