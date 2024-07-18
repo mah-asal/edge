@@ -278,6 +278,7 @@ const PlanService: ServiceSchema = {
 							price: price,
 							method: method,
 							payied: false,
+							data: inapp && inapp['token'] ? inapp['token'] : null
 						}
 					});
 
@@ -364,12 +365,12 @@ const PlanService: ServiceSchema = {
 						const { sku, token: purchasesToken } = inapp;
 						const url = `https://pardakht.cafebazaar.ir/devapi/v2/api/validate/com.mahasal.app.mahasal/inapp/${sku}/purchases/${purchasesToken}?access_token=${this.settings.cafebazaarAccessToken}`;
 
-						const result = await axios.get(url);						
+						const result = await axios.get(url);
 
 						if (result.status == 200) {
 							const { consumptionState } = result.data;
 
-						
+
 							if (consumptionState == 0) {
 								const result = await api.request({
 									method: 'GET',
@@ -552,7 +553,7 @@ const PlanService: ServiceSchema = {
 				if (res['code'] == 200 && res['data']) {
 					this.settings.cafebazaarAccessToken = res['data'];
 
-					
+
 				}
 			}).catch(console.error)
 			this.broker.call('api.v1.config.get', {

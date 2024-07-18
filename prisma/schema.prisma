@@ -14,7 +14,7 @@ datasource db {
 }
 
 model Device {
-  id        Int    @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   user      String
   uuid      String
   store     String
@@ -83,6 +83,7 @@ model PaymentLog {
   factor    String // factor id
   price     Int
   method    String
+  data      String?
   payied    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
