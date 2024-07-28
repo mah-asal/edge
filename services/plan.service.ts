@@ -277,6 +277,10 @@ const PlanService: ServiceSchema = {
 					default: null
 				},
 			},
+			cache: {
+                enabled: true, // ctx => ctx.meta.cache,
+                ttl: 60 * 5,
+            },
 			async handler(ctx) {
 				try {
 					const { method, card, data: inapp } = ctx.params;
