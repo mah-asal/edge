@@ -29,6 +29,10 @@ const AppService: ServiceSchema = {
 					default: 'ANY'
 				}
 			},
+			cache: {
+                enabled: true, // ctx => ctx.meta.cache,
+                ttl: 60 * 5,
+            },
 			async handler(ctx) {
 				const configs: any = await ctx.call('api.v1.config.all', { store: ctx.params.store });
 

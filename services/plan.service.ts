@@ -1,9 +1,10 @@
 import type { ServiceSchema } from "moleculer";
 
 import cheerio from "cheerio";
-
 import axios from "axios";
 import qs from "qs";
+import jwt from "../shared/jwt";
+
 import api from "../shared/api";
 import prisma from "../shared/prisma";
 
@@ -65,6 +66,7 @@ const PlanService: ServiceSchema = {
 							title: item['title'],
 							description: cheerio.load(item['body']).text(),
 							price: item['price'],
+							discount: item['discount'],
 							badge: item['minutesCount'] == null ? null : `${Math.round(item['minutesCount'] / 1440)} روزه`,
 							type: this.settings.types[item['planType']],
 							order: item['displayOrder'],
@@ -125,7 +127,7 @@ const PlanService: ServiceSchema = {
 			visibility: 'published',
 			description: 'Generate a new cart',
 			params: {
-				'plans': {
+				plans: {
 					type: 'array',
 					min: 1,
 					items: {
@@ -134,10 +136,19 @@ const PlanService: ServiceSchema = {
 						min: 1
 					},
 				},
+				discount: {
+					type: 'string',
+					optional: true
+				},
+				store: {
+					type: 'enum',
+					values: ['GOOGLEPLAY', 'MYKEY', 'CAFEBAZAAR', 'DIRECT', 'ANY'],
+					default: 'ANY'
+				}
 			},
 			async handler(ctx) {
 				try {
-					const { plans } = ctx.params;
+					const { plans, discount, store } = ctx.params;
 					const { token } = ctx.meta;
 
 					const start = Date.now();
@@ -150,26 +161,48 @@ const PlanService: ServiceSchema = {
 						token: token
 					});
 
-					const result = await api.request({
+					let result = await api.request({
 						method: 'GET',
 						path: '/Plan/ShowCurrentFactor',
 						token: token,
 					});
+
+					let output = {
+						id: result['id'],
+						price: 0,
+						plans: result['factorDetails'].map((item: any) => ({
+							id: item['shopPlan']['id'],
+							title: item['shopPlan']['title'],
+							price: item['price'],
+							discount: item['shopPlan']['discount'],
+						})),
+						jsonwebtoken: '',
+					}
+
+					// calculate price
+					for(let plan of output.plans) {
+						output['price'] += Math.floor(plan.price - ((plan.price * (plan.discount ?? 0)) / 100));
+					}
+
+					if (store == 'CAFEBAZAAR') {
+						const resultOfJwtSecret: any = await ctx.call('api.v1.config.get', {
+							key: 'cafebazaar:jwtSecret',
+						});
+
+						// create jwt token
+						output['jsonwebtoken'] = jwt.generate({
+							price: output['price'] * 10,
+							package_name: 'com.mahasal.app.mahasal',
+							sku: plans[0].toString(),
+						}, resultOfJwtSecret.data);
+					}
 
 					return {
 						code: 200,
 						meta: {
 							took: Date.now() - start,
 						},
-						data: {
-							id: result['id'],
-							price: result['price'],
-							plans: result['factorDetails'].map((item: any) => ({
-								id: item['shopPlan']['id'],
-								title: item['shopPlan']['title'],
-								price: item['price'],
-							})),
-						}
+						data: output,
 					}
 				} catch (error) {
 					console.error(error);

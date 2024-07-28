@@ -152,8 +152,8 @@ const ProfileService: ServiceSchema = {
 							took: Date.now() - start,
 						},
 						data: {
-							advertised: advertised['data'], 
-							visited: visited['data'], 
+							advertised: advertised['data'],
+							visited: visited['data'],
 							newest: newest['data'],
 						}
 					}
@@ -266,7 +266,7 @@ const ProfileService: ServiceSchema = {
 
 					const start = Date.now();
 
-					if(queries.includes('&HasImage=0')) {
+					if (queries.includes('&HasImage=0')) {
 						queries = queries.replace('&HasImage=0', '');
 					}
 
@@ -284,7 +284,7 @@ const ProfileService: ServiceSchema = {
 
 							if (image.startsWith('http') == false) {
 								image = 'https://s3.tv-92.com/uploads' + image;
-							}							
+							}
 
 							const cityResult: any = await ctx.call('api.v1.dropdown.byGroupAndValue', {
 								key: "City",
@@ -355,7 +355,7 @@ const ProfileService: ServiceSchema = {
 				],
 			},
 			cache: {
-				enabled: ctx => ctx.meta.cache,
+				enabled: true,// ctx => ctx.meta.cache,
 				ttl: 120,
 				keys: ['id', 'detailed', '#id'],
 			},

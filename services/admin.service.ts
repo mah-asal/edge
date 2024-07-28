@@ -28,8 +28,7 @@ const AdminService: ServiceSchema = {
 				try {
 					const start = Date.now();
 
-					const [resultOfUsers, resultOfFranceOnlines, resultOfIranOnlines, resultOfFeedbacks, [resultOfApps, resultOfDevices, resultOfNotifications, resultOfSuccessfullSentNotifications, resultOfFailedSentNotifications, resultOfPackages, resultOfStores, resultOfVersions, resultOfBrands, resultOfTotalPayments]]: any = await Promise.all([
-						ctx.call('api.v1.profile.search', { limit: 1 }),
+					const [resultOfFranceOnlines, resultOfIranOnlines, resultOfFeedbacks, [resultOfApps, resultOfDevices, resultOfNotifications, resultOfSuccessfullSentNotifications, resultOfFailedSentNotifications, resultOfPackages, resultOfStores, resultOfVersions, resultOfBrands, resultOfTotalPayments]]: any = await Promise.all([
 						ctx.call('v1.socket.onlines', {}, {
 							nodeID: 'edge@france'
 						}),
@@ -66,7 +65,7 @@ const AdminService: ServiceSchema = {
 						},
 						data: {
 							feedback: resultOfFeedbacks['data'],
-							users: Number(resultOfUsers['meta']['total']).toLocaleString('fa-IR'),
+							users: 0,
 							onlines: Number(resultOfFranceOnlines['data'] + resultOfIranOnlines['data']).toLocaleString('fa-IR'),
 							apps: Number(resultOfApps[0]['count']).toLocaleString('fa-IR'),
 							devices: Number(resultOfDevices[0]['count']).toLocaleString('fa-IR'),

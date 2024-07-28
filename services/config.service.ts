@@ -21,6 +21,7 @@ const keys = [
 	"config:invitation-message",
 	"config:captcha",
 	"config:feedback",
+	"config:discount",
 	"hash:dropdowns",
 	"endpoint:api",
 	"endpoint:public",
@@ -34,6 +35,7 @@ const keys = [
 	"payment:card-bank",
 	"cafebazaar:accessToken",
 	"cafebazaar:refreshToken",
+	"cafebazaar:jwtSecret",
 	"myket:token"
 ].sort();
 

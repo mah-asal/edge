@@ -102,7 +102,7 @@ const TransactionService: ServiceSchema = {
                 }
             },
             cache: {
-                enabled: ctx => ctx.meta.cache,
+                enabled: true, // ctx => ctx.meta.cache,
                 ttl: 120,
             },
             async handler(ctx) {
