@@ -45,7 +45,7 @@ const PlanService: ServiceSchema = {
 				}
 			},
 			cache: {
-				enabled: ctx => ctx.meta.cache,
+				enabled: true, //ctx => ctx.meta.cache,
 				ttl: 120,
 				keys: ['store'],
 			},
@@ -136,10 +136,6 @@ const PlanService: ServiceSchema = {
 						min: 1
 					},
 				},
-				discount: {
-					type: 'string',
-					optional: true
-				},
 				store: {
 					type: 'enum',
 					values: ['GOOGLEPLAY', 'MYKEY', 'CAFEBAZAAR', 'DIRECT', 'ANY'],
@@ -148,7 +144,7 @@ const PlanService: ServiceSchema = {
 			},
 			async handler(ctx) {
 				try {
-					const { plans, discount, store } = ctx.params;
+					const { plans, store } = ctx.params;
 					const { token } = ctx.meta;
 
 					const start = Date.now();
@@ -167,9 +163,11 @@ const PlanService: ServiceSchema = {
 						token: token,
 					});
 
-					let output = {
+					let data = {
 						id: result['id'],
-						price: 0,
+						price: result['price'],
+						discount: result['discountFromCode'] + result['discountFromShopPlan'],
+						total: result['priceOriginal'],
 						plans: result['factorDetails'].map((item: any) => ({
 							id: item['shopPlan']['id'],
 							title: item['shopPlan']['title'],
@@ -179,10 +177,10 @@ const PlanService: ServiceSchema = {
 						jsonwebtoken: '',
 					}
 
-					// calculate price
-					for (let plan of output.plans) {
-						output['price'] += Math.floor(plan.price - ((plan.price * (plan.discount ?? 0)) / 100));
-					}
+					// // calculate price
+					// for (let plan of data.plans) {
+					// 	data['price'] += Math.floor(plan.price - ((plan.price * (plan.discount ?? 0)) / 100));
+					// }
 
 					if (store == 'CAFEBAZAAR') {
 						const resultOfJwtSecret: any = await ctx.call('api.v1.config.get', {
@@ -190,8 +188,8 @@ const PlanService: ServiceSchema = {
 						});
 
 						// create jwt token
-						output['jsonwebtoken'] = jwt.generate({
-							price: output['price'] * 10,
+						data['jsonwebtoken'] = jwt.generate({
+							price: data['price'] * 10,
 							package_name: 'com.mahasal.app.mahasal',
 							sku: plans[0].toString(),
 						}, resultOfJwtSecret.data);
@@ -202,13 +200,80 @@ const PlanService: ServiceSchema = {
 						meta: {
 							took: Date.now() - start,
 						},
-						data: output,
+						data: data,
 					}
 				} catch (error) {
 					console.error(error);
 
 					return {
 						code: 500,
+					}
+				}
+			}
+		},
+		discount: {
+			visibility: 'published',
+			description: 'Submit discount to the factor',
+			params: {
+				code: {
+					type: 'string'
+				},
+				store: {
+					type: 'enum',
+					values: ['GOOGLEPLAY', 'MYKEY', 'CAFEBAZAAR', 'DIRECT', 'ANY'],
+					default: 'ANY'
+				}
+			},
+			async handler(ctx) {
+				try {
+					const { code, store } = ctx.params;
+					const { token } = ctx.meta;					
+
+					const result = await api.request({
+						method: 'POST',
+						path: `/Plan/ApplyDiscountCode?code=${code}`,
+						token: token,
+					});
+
+					let data: any = {};
+					
+					if (result.code == 0) {
+						data['id'] = result.returnData.id;
+						data['price'] = result.returnData.price;
+						data['discount'] = result.returnData.discountFromCode + result.returnData.discountFromShopPlan;
+						data['total'] = result.returnData.priceOriginal;
+						data['plans'] = result.returnData.factorDetails.map((item: any) => ({
+							id: item['shopPlan']['id'],
+							title: item['shopPlan']['title'],
+							price: item['price'],
+							discount: item['shopPlan']['discount'],
+						}));
+
+						// regenerate jwt token
+						if (store == 'CAFEBAZAAR') {
+							const resultOfJwtSecret: any = await ctx.call('api.v1.config.get', {
+								key: 'cafebazaar:jwtSecret',
+							});
+
+							// create jwt token
+							data['jsonwebtoken'] = jwt.generate({
+								price: data['price'] * 10,
+								package_name: 'com.mahasal.app.mahasal',
+								sku: data['plans'][0]['id'].toString(),
+							}, resultOfJwtSecret.data);
+						}
+					}		
+
+					return {
+						code: 200,
+						message: result.messages ? result.messages[0] : result.returnData,
+						data: data,
+					}
+				} catch (error) {
+					console.error(error);
+
+					return {
+						code: 500
 					}
 				}
 			}
@@ -277,10 +342,6 @@ const PlanService: ServiceSchema = {
 					default: null
 				},
 			},
-			cache: {
-                enabled: true, // ctx => ctx.meta.cache,
-                ttl: 60 * 5,
-            },
 			async handler(ctx) {
 				try {
 					const { method, card, data: inapp } = ctx.params;
@@ -301,7 +362,7 @@ const PlanService: ServiceSchema = {
 					let price;
 					let factor;
 
-					if (current) {
+					if (current && current['id']) {
 						price = current['price'] ?? 0;
 						factor = current['id'];
 
@@ -432,7 +493,8 @@ const PlanService: ServiceSchema = {
 												id: log.id
 											},
 											data: {
-												payied: true
+												payied: true,
+												data: purchasesToken
 											}
 										});
 									} else {
@@ -443,8 +505,9 @@ const PlanService: ServiceSchema = {
 												price: price,
 												method: method,
 												payied: true,
+												data: purchasesToken
 											}
-										}); 
+										});
 									}
 								}
 							}
@@ -477,7 +540,7 @@ const PlanService: ServiceSchema = {
 
 									};
 
-									if(log) {
+									if (log) {
 										await prisma.paymentLog.update({
 											where: {
 												id: log.id

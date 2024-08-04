@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "migrate": "prisma migrate dev --name init",
-    "build": "tsc --project tsconfig.build.json",
+    "build": "rm -rf dist && tsc --project tsconfig.build.json && cp ./firebase.config.json ./dist",
     "dev": "ts-node ./node_modules/moleculer/bin/moleculer-runner.js --config moleculer.config.ts --hot --repl services/**/*.service.ts --repl projects/**/*.service.ts",
     "test": "PORT=9300 NODEID=edge@test  CONFIG_SUFFIX=\"#mahasal:dev:\"  npm run dev",
     "start": "moleculer-runner --config dist/moleculer.config.js --repl dist/**/**/*.service.js",
@@ -54,7 +54,7 @@
   "dependencies": {
     "-": "^0.0.1",
     "@aws-sdk/client-s3": "^3.552.0",
-    "@elastic/elasticsearch": "^8.12.2",
+    "@elastic/elasticsearch": "^8.14.0",
     "@namatery/multer-minio": "^1.1.2",
     "@prisma/client": "^5.15.0",
     "axios": "^1.6.7",

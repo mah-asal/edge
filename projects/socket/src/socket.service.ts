@@ -175,6 +175,8 @@ const SocketService: ServiceSchema = {
                 (socket as any).meta.token = socket.handshake.headers['bearer'];
                 const tdata = jwt.extract((socket as any).meta.token);
                 (socket as any).meta.id = tdata['sub'];
+                (socket as any).meta.sex = tdata['Sexuality'] == "0" ? 'female' : 'male';
+
 
                 this.broker.emit("socket.auth", {
                     socket,
@@ -187,6 +189,7 @@ const SocketService: ServiceSchema = {
                 (socket as any).meta.token = socket.handshake.query['bearer'];
                 const tdata = jwt.extract((socket as any).meta.token);
                 (socket as any).meta.id = tdata['sub'];
+                (socket as any).meta.sex = tdata['Sexuality'] == "0" ? 'female' : 'male';
 
                 this.broker.emit("socket.auth", {
                     socket,
@@ -212,6 +215,7 @@ const SocketService: ServiceSchema = {
                     (socket as any).meta.token = data['token'];
                     const tdata = jwt.extract((socket as any).meta.token);
                     (socket as any).meta.id = tdata['sub'];
+                    (socket as any).meta.sex = tdata['Sexuality'] == "0" ? 'female' : 'male';
                     this.broker.emit("socket.auth", { socket, token: data['token'], id: tdata['sub'] });
                 } else {
                     socket.emit("actions_response", {

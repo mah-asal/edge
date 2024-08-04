@@ -148,6 +148,7 @@ const HttpService: ServiceSchema = {
                 try {
                     const data = jwt.extract((req as any).meta.token);
                     (req as any).meta.id = data['sub'];
+                    (req as any).meta.sex = data['Sexuality'] == "0" ? 'female' : 'male';
                 } catch (error) {
                     //
                 }

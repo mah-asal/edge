@@ -189,8 +189,6 @@ const ChatService: ServiceSchema = {
 						}
 					}
 				} catch (error) {
-					console.error(error);
-
 					return {
 						code: 500
 					}
@@ -228,7 +226,7 @@ const ChatService: ServiceSchema = {
 			async handler(ctx) {
 				try {
 					const { type, page, limit } = ctx.params;
-					const { token, id: myId } = ctx.meta;
+					const { id: myId } = ctx.meta;
 
 					let path = type == 'admin' ? '/AdminMessage/Index' : '/Chat';
 
@@ -237,7 +235,7 @@ const ChatService: ServiceSchema = {
 					const result = await api.request({
 						path: path += `?pageIndex=${page - 1}&pageSize=${limit}`,
 						method: 'GET',
-						token,
+						token: ctx.meta.token,
 					});
 
 
@@ -257,44 +255,52 @@ const ChatService: ServiceSchema = {
 					}
 
 					const count = result.totalCount ?? result.returnData.totalCount;
+					let data = [];
 
-					const data = (result.returnData.items ?? result.returnData ?? []).map((element: any) => {
-						const item = element.item ?? element;
+					try {
+						data = (result.returnData.items ?? result.returnData ?? []).map((element: any) => {
+							const item = element.item ?? element;
 
 
-						let sender: any = {
-							id: item.senderId,
-							name: item.senderName,
-							avatar: endpoint.format(item.senderImage),
-							seen: type == 'admin' ? this.settings.seen['1'] : this.settings.seen[`${element.sender.isOnlineByDateTime}`] ?? 'offline',
-						};
-
-						if (sender.id == myId) {
-							sender = {
-								id: item.reciverId,
-								name: item.reciverName,
-								avatar: endpoint.format(item.reciverImage),
-								seen: type == 'admin' ? this.settings.seen['1'] : this.settings.seen[element.reciever && element.reciever.isOnlineByDateTime ? `${element.reciever.isOnlineByDateTime}` : '0'] ?? 'offline',
+							let sender: any = {
+								id: item.senderId,
+								name: item.senderName,
+								avatar: endpoint.format(item.senderImage),
+								seen: type == 'admin' ? this.settings.seen['1'] : this.settings.seen[`${element.sender.isOnlineByDateTime}`] ?? 'offline',
 							};
-						}
 
-						let count = null;
+							if (sender.id == myId) {
+								sender = {
+									id: item.reciverId,
+									name: item.reciverName,
+									avatar: endpoint.format(item.reciverImage),
+									seen: type == 'admin' ? this.settings.seen['1'] : this.settings.seen[element.reciever && element.reciever.isOnlineByDateTime ? `${element.reciever.isOnlineByDateTime}` : '0'] ?? 'offline',
+								};
+							}
 
-						if (element.contentTypeJson) {
-							count = parseInt(JSON.parse(element.contentTypeJson.split('\'').join('"'))['countUnreadMessages']);
-						}
+							let count = null;
 
-						if (typeof element.unreadMessagesCount != 'undefined') {
-							count = element.unreadMessagesCount;
-						}
+							if (element.contentTypeJson) {
+								count = parseInt(JSON.parse(element.contentTypeJson.split('\'').join('"'))['countUnreadMessages']);
+							}
 
-						return {
-							id: type == 'admin' ? item.id : sender.id == myId ? item.reciverId : sender.id,
-							count: count,
-							message: this.formatMessage(item),
-							sender,
-						};
-					});
+							if (typeof element.unreadMessagesCount != 'undefined') {
+								count = element.unreadMessagesCount;
+							}
+
+							return {
+								id: type == 'admin' ? item.id : sender.id == myId ? item.reciverId : sender.id,
+								count: count,
+								message: this.formatMessage(item),
+								sender,
+							};
+						});
+					} catch (error) {
+						console.error(error);
+						console.log(ctx.meta.token);
+						
+                        console.log(JSON.stringify(result));						
+					}
 
 					return {
 						code: 200,
@@ -483,7 +489,7 @@ const ChatService: ServiceSchema = {
 
 					return {
 						code: 200,
-						"message": result['messages'][0],
+						"message": result['messages'] && result['messages'][0] ? result['messages'][0] : 'پیام ارسال شد',
 					}
 				} catch (error) {
 					console.error(error);

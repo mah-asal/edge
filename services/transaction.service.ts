@@ -66,6 +66,22 @@ const TransactionService: ServiceSchema = {
 
                     const count = result.returnData.totalCount;
 
+                    let data = [];
+
+                    try {
+                        data = result.returnData.items.map((item: any) => {
+                            return {
+                                id: item['id'],
+                                price: item['price'],
+                                date: moment(item['date']).locale('fa').format("dddd jDD jMMMM jYYYY ساعت hh:mm"),
+                                method: item['isPayByCard'] ? 'کارت به کارت' : item['bankName'],
+                            }
+                        })
+                    } catch (error) {
+                        console.error(error);
+                        console.log(JSON.stringify(result));
+                    }
+
                     return {
                         code: 200,
                         meta: {
@@ -75,14 +91,7 @@ const TransactionService: ServiceSchema = {
                             last: Math.max(Math.ceil(count / limit), 1),
                             took: Date.now() - start,
                         },
-                        data: result.returnData.items.map((item: any) => {
-                            return {
-                                id: item['id'],
-                                price: item['price'],
-                                date: moment(item['date']).locale('fa').format("dddd jDD jMMMM jYYYY ساعت hh:mm"),
-                                method: item['isPayByCard'] ? 'کارت به کارت' : item['bankName'],
-                            }
-                        })
+                        data: data,
                     }
                 } catch (error) {
                     return {

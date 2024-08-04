@@ -4,7 +4,6 @@ import moment from 'jalali-moment';
 import qs from 'qs';
 
 import api from "../shared/api";
-import endpoint from "../shared/endpoint";
 import jwt from "../shared/jwt";
 
 const ProfileService: ServiceSchema = {
@@ -330,6 +329,88 @@ const ProfileService: ServiceSchema = {
 				}
 			}
 		},
+		searchOnElastic: {
+			visibility: 'published',
+			description: 'Search profiles on elastic',
+			params: {
+				page: {
+					type: "number",
+					min: 1,
+					default: 1,
+					optional: true,
+					convert: true,
+				},
+				limit: {
+					type: "number",
+					min: 1,
+					max: 100,
+					default: 12,
+					optional: true,
+					convert: true
+				},
+				type: {
+					type: 'enum',
+					values: ['search', 'newest', 'advertised'],
+					default: 'search'
+				},
+				filters: {
+					type: "object",
+					default: {},
+				}
+			},
+			async handler(ctx) {
+				try {
+					const { page, limit, type, filters } = ctx.params;
+					const { sex } = ctx.meta;
+
+					let filter: any = [];
+					let sort: any = [];
+					let random: boolean = false;
+
+					if (sex) {
+						filter.push({
+							key: 'data.dropdowns.sexuality.keyword',
+							value: sex == 'male' ? 1 : 0,
+							oprator: 'equals'
+						});
+					}
+
+					switch (type) {
+						case 'advertised':
+							filter.push({
+								key: 'data.plan.ad',
+								value: true,
+								oprator: 'equals'
+							});
+							random = true;
+							break;
+						case 'newest':
+							filter.push({
+								key: 'data.defaultAvatar',
+								value: false,
+								oprator: 'equals'
+							});
+							sort.push({
+								key: 'data.registerAt',
+								order: 'asc'
+							});
+							break;
+					}
+
+					return ctx.call('api.v1.elastic.search', {
+						page: page,
+						limit: limit,
+						filter,
+						sort,
+						random,
+					});
+				} catch (error) {
+					return {
+						code: 500
+					}
+				}
+			}
+		},
 		one: {
 			visibility: 'published',
 			description: 'Get one profile by id',
@@ -578,6 +659,18 @@ const ProfileService: ServiceSchema = {
 				image = 'https://s3.tv-92.com/uploads' + image;
 			}
 
+			if (image.includes('cdn.s06.ir')) {
+				image.replace('cdn.s06.ir', 's3.tv-92.com');
+			}
+
+			if (image.includes('cdn.bzr01.ir')) {
+				image.replace('cdn.bzr01.ir', 's3.tv-92.com');
+			}
+
+			if (image.includes('iran-cdn.bzr01.ir')) {
+				image.replace('iran-cdn.bzr01.ir', 's3.tv-92.com');
+			}
+
 			let details: any = {};
 			let dropdowns: any = {};
 
@@ -633,10 +726,12 @@ const ProfileService: ServiceSchema = {
 				details['job'] = item.job;
 				details['aboutMe'] = item.aboutMe;
 				details['birthDate'] = birthDate.format('dddd jDD jMMMM jYYYY');
+				details['birthAt'] = Math.abs(birthDate.valueOf());
 				details['registerDate'] = moment(item.createDate).locale('fa').format('dddd jDD jMMMM jYYYY');
-				dropdowns['birthDateYear'] = birthDate.jYear().toString();
-				dropdowns['birthDateMonth'] = (birthDate.jMonth() + 1).toString();
-				dropdowns['birthDateDay'] = birthDate.jDate().toString();
+				details['registerAt'] = moment(item.createDate).valueOf();
+				dropdowns['birthDateYear'] = birthDate.jYear();
+				dropdowns['birthDateMonth'] = (birthDate.jMonth() + 1);
+				dropdowns['birthDateDay'] = birthDate.jDate();
 				details['age'] = (() => {
 					const dur = moment.duration(moment().diff(moment(item.birthDate)));
 
@@ -686,6 +781,7 @@ const ProfileService: ServiceSchema = {
 				phone: item.mobile,
 				verified: item.mobileConfirmed ?? false,
 				last: item.latestUserActivity ? moment(item.latestUserActivity).locale('fa').format('dddd jDD jMMMM jYYYY ساعت HH:MM') : 'خیلی وقت پیش',
+				lastAt: item.latestUserActivity ? moment(item.latestUserActivity).valueOf() : null,
 				ago: item.latestUserActivity ? moment(item.latestUserActivity).locale('fa').fromNow(true) : 'خیلی وقت پیش',
 				seen: this.settings.seen[item.isOnlineByDateTime] ?? "offline",
 				age: (() => {
@@ -695,8 +791,11 @@ const ProfileService: ServiceSchema = {
 				})(),
 				...details,
 				plan: {
+					freeAt: moment(item.endDateFreeSpecialAccount).valueOf(),
 					free: item.endDateFreeSpecialAccount != null && plan && plan['freeHours'] != 0 ? true : false,
+					specialAt: moment(item.endDateSpecialAccount).valueOf(),
 					special: item.hasSpecialAccount ? true : false,
+					adAt: moment(item.endDateAdvertisementAccount).valueOf(),
 					ad: item.hasAdvertisementAccount ? true : false,
 					...plan
 				},

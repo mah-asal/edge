@@ -1,5 +1,6 @@
 import type { ServiceSchema } from "moleculer";
 import api from "../shared/api";
+import prisma from "../shared/prisma";
 
 const AuthService: ServiceSchema = {
 	name: "auth",
@@ -282,6 +283,23 @@ const AuthService: ServiceSchema = {
 						path: '/Home/Register',
 						data: data
 					});
+
+					if (result['returnData']) {
+						// automatic enable welcome package
+						const resultOfWelcomePacakge = await prisma.config.findFirst({
+							where: {
+								key: 'config:free-account-active-automatically'
+							}
+						});
+
+						if (resultOfWelcomePacakge && resultOfWelcomePacakge.value == 'true') {
+							await ctx.call('api.v1.user.activeWelcomePackage', {}, {
+								meta: {
+									token: result['returnData'],
+								}
+							});
+						}
+					}
 
 					return {
 						code: 200,

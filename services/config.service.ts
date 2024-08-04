@@ -299,12 +299,17 @@ const ConfigService: ServiceSchema = {
 	 * Service started lifecycle event handler
 	 */
 	async started() {
-		// set endpoint from redis
-		const endpointValue = await redis.get(`${CONFIG_SUFFIX}endpoint:api`);
+		setTimeout(async () => {
+			const result = await prisma.config.findFirst({
+				where: {
+					key: 'endpoint:api'
+				}
+			});
 
-		if (endpointValue) {
-			endpoint.api = endpointValue;
-		}
+			if(result) {
+				endpoint.api = result?.value;
+			}
+		}, 1000);
 	},
 
 	/**

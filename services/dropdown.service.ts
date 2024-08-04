@@ -30,7 +30,7 @@ const DropdownService: ServiceSchema = {
 			description: "In this action we are just returning list of dropdowns",
 			cache: {
 				enabled: true,
-				ttl: 60
+				ttl: 3600
 			},
 			async handler(ctx) {
 				try {
