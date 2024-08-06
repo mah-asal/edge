@@ -36,6 +36,13 @@ const AppService: ServiceSchema = {
 			async handler(ctx) {
 				const configs: any = await ctx.call('api.v1.config.all', { store: ctx.params.store });
 
+				if(configs.code == 200) {
+					delete configs.data['cafebazaar:accessToken'];
+					delete configs.data['cafebazaar:refreshToken'];
+					delete configs.data['cafebazaar:jwtSecret'];
+					delete configs.data['myket:token'];
+				}
+
 				return {
 					code: 200,
 					data: {

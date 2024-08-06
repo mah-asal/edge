@@ -47,7 +47,7 @@ const PlanService: ServiceSchema = {
 			cache: {
 				enabled: true, //ctx => ctx.meta.cache,
 				ttl: 120,
-				keys: ['store'],
+				keys: ['store', '#token'],
 			},
 			async handler(ctx) {
 				try {
@@ -59,7 +59,7 @@ const PlanService: ServiceSchema = {
 						path: '/Plan?pageSize=100',
 						token: ctx.meta.token,
 					});
-
+				
 					let data: any[] = result.returnData.items.map((item: any) => {
 						return {
 							id: item['id'],
@@ -117,6 +117,8 @@ const PlanService: ServiceSchema = {
 						data: data,
 					}
 				} catch (error) {
+					console.error(error);
+
 					return {
 						code: 500
 					}

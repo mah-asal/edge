@@ -6,10 +6,13 @@ import cheerio from "cheerio";
 import api from "../shared/api";
 import endpoint from "../shared/endpoint";
 
+import ProfileMixin from "../mixin/profile.mixin";
 
 const ChatService: ServiceSchema = {
 	name: "chat",
 	version: 'api.v1',
+
+	mixins: [ProfileMixin],
 
 	/**
 	 * Settings
@@ -48,56 +51,47 @@ const ChatService: ServiceSchema = {
 			},
 			async handler(ctx) {
 				try {
-					const { user } = ctx.params;
+					const { user: id } = ctx.params;
 					const { token } = ctx.meta;
 
 					const start = Date.now();
 
 					// 1. me, user, messages
-					const [
-						resultOfMe,
-						resultOfUser,
-						resultOfMessages
-					]: any[] = await Promise.all([
-						ctx.call('api.v1.profile.me', {}, {
-							meta: {
-								token: token,
-							}
-						}),
-						ctx.call('api.v1.profile.one', {
-							id: user,
-							detailed: true
-						}, {
-							meta: {
-								token: token
-							}
-						}),
-						ctx.call('api.v1.chat.messages', {
-							id: user,
-							type: 'user',
-						}, {
-							meta: {
-								token: token
-							}
-						}),
-					]);
+					const resultOfOne = await api.request({
+						method: 'GET',
+						path: `/chat/one?id=${id}`,
+						token,
+					});
 
-					if (resultOfUser.data.error != null) {
+					if(resultOfOne['user'] == null) {
 						return {
 							code: 200,
 							data: {
-								chat: user,
+								chat: id,
 								permission: null,
-								user: resultOfUser.data
+								user: {
+									error: 'LEAVE_FOR_EVER',
+									profile: null
+								},
+								messages: [],
 							}
 						}
 					}
 
-					const mySex = resultOfMe.data.dropdowns.sexuality;
 
-					const userSentMessageToMe = resultOfMessages.data.findIndex((item: any) => item.me == false) != -1;
-					const userHasPlan = resultOfUser.data.profile.plan.free || resultOfUser.data.profile.plan.special || resultOfUser.data.profile.plan.ad || false;
-					const iHavePlan = resultOfMe.data.plan.free || resultOfMe.data.plan.special || resultOfMe.data.plan.ad || false;
+					let me = await this.formatProfile(resultOfOne['me'], true);
+					let user = await this.formatProfile(resultOfOne['user'], true, true);
+					let messages = resultOfOne['data']['items'].map((item: any) => ({
+						...this.formatMessage(item),
+						me: item.senderId != id,
+					}));
+
+					const mySex: number = me.dropdowns.sexuality;
+
+					const userSentMessageToMe = messages.findIndex((item: any) => item.me == false) != -1;
+					const userHasPlan = user.plan.free || user.plan.special || user.plan.ad || false;
+					const iHavePlan = me.plan.free || me.plan.special || me.plan.ad || false;
+									
 
 					let allowVoiceCall = false;
 					let allowVideoCall = false;
@@ -109,7 +103,7 @@ const ChatService: ServiceSchema = {
 					let canRecordVoice = false;
 					let canTypeNumbers = false;
 
-					let phoneConfirmed = resultOfMe.data.verified;
+					let phoneConfirmed = me.verified;
 					let needPlan = !(iHavePlan ? true : userHasPlan && userSentMessageToMe);
 
 					if (needPlan) {
@@ -141,8 +135,8 @@ const ChatService: ServiceSchema = {
 						allowVoiceCall = false;
 						allowVideoCall = false;
 					} else {
-						allowVoiceCall = resultOfUser.data.profile.permission.voiceCall;
-						allowVideoCall = resultOfUser.data.profile.permission.videoCall;
+						allowVoiceCall = user.permission.voiceCall;
+						allowVideoCall = user.permission.videoCall;
 
 						canSendMessage = true;
 						canAttachment = true;
@@ -176,17 +170,41 @@ const ChatService: ServiceSchema = {
 						needPlan
 					};
 
+					let error = null;
+
+					// gay
+					if(user.dropdowns.sexuality == me.dropdowns.sexuality) {
+						error = 'GAY'
+					} else if(user.relation.blocked) {
+						error = 'BLOCKED'
+					} else if(user.relation.blockedMe) {
+						error = 'BLOCKED_ME'
+					}
+
+					let data = {
+						chat: id,
+						permission: permission,
+						user: {
+							error: error,
+							profile: user
+						},
+						messages: {
+							meta: {
+								page: resultOfOne['data']['pageIndex'],
+								last: Math.max(Math.floor(resultOfOne['data']['totalPages'] / 8), 1),
+								total: resultOfOne['data']['totalPages'],
+							},
+							data: messages
+						},
+					};
+					
+
 					return {
 						code: 200,
 						meta: {
 							took: Date.now() - start,
 						},
-						data: {
-							chat: user,
-							permission: permission,
-							user: resultOfUser.data,
-							messages: resultOfMessages
-						}
+						data: data,
 					}
 				} catch (error) {
 					return {
@@ -239,7 +257,7 @@ const ChatService: ServiceSchema = {
 					});
 
 
-					if (result.returnData == null) {
+					if (result.returnData == null || typeof result.returnData == 'string') {
 						return {
 							code: 200,
 							meta: {

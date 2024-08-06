@@ -154,7 +154,7 @@ const DropdownService: ServiceSchema = {
 						const value = bulk[key];
 						const _key = key.slice(0, 1).toLowerCase() + key.slice(1);
 						result[_key] = this.settings.maps[`${key}:${value}`];
-					}
+					}					
 
 					return {
 						code: 200,

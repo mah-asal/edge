@@ -44,7 +44,7 @@ const TransactionService: ServiceSchema = {
                     convert: true,
                     min: 10,
                     max: 100,
-                    default: 12
+                    default: 20
                 },
             },
             cache: {
@@ -57,12 +57,12 @@ const TransactionService: ServiceSchema = {
                     const { token } = ctx.meta;
 
                     const start = Date.now();
-
+                    
                     const result = await api.request({
                         method: 'GET',
                         path: `/Factor/Index?pageIndex=${(page - 1)}&pageSize=${limit}`,
                         token: token,
-                    });
+                    });                    
 
                     const count = result.returnData.totalCount;
 

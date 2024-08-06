@@ -36,7 +36,13 @@ const keys = [
 	"cafebazaar:accessToken",
 	"cafebazaar:refreshToken",
 	"cafebazaar:jwtSecret",
-	"myket:token"
+	"myket:token",
+	"contact:phone",
+	"contact:email",
+	"contact:address",
+	"contact:time",
+	"contact:form",
+	"home:banner"
 ].sort();
 
 const ConfigService: ServiceSchema = {
