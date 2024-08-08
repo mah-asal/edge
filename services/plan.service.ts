@@ -59,7 +59,7 @@ const PlanService: ServiceSchema = {
 						path: '/Plan?pageSize=100',
 						token: ctx.meta.token,
 					});
-				
+
 					let data: any[] = result.returnData.items.map((item: any) => {
 						return {
 							id: item['id'],
@@ -185,16 +185,20 @@ const PlanService: ServiceSchema = {
 					// }
 
 					if (store == 'CAFEBAZAAR') {
-						const resultOfJwtSecret: any = await ctx.call('api.v1.config.get', {
-							key: 'cafebazaar:jwtSecret',
+						const results = await prisma.config.findMany({
+							where: {
+								key: 'cafebazaar:jwtSecret'
+							}
 						});
 
-						// create jwt token
-						data['jsonwebtoken'] = jwt.generate({
-							price: data['price'] * 10,
-							package_name: 'com.mahasal.app.mahasal',
-							sku: plans[0].toString(),
-						}, resultOfJwtSecret.data);
+						if (results.length == 1) {
+							// create jwt token
+							data['jsonwebtoken'] = jwt.generate({
+								price: data['price'] * 10,
+								package_name: 'com.mahasal.app.mahasal',
+								sku: plans[0].toString(),
+							}, results[0].value);
+						}
 					}
 
 					return {
@@ -229,7 +233,7 @@ const PlanService: ServiceSchema = {
 			async handler(ctx) {
 				try {
 					const { code, store } = ctx.params;
-					const { token } = ctx.meta;					
+					const { token } = ctx.meta;
 
 					const result = await api.request({
 						method: 'POST',
@@ -238,7 +242,7 @@ const PlanService: ServiceSchema = {
 					});
 
 					let data: any = {};
-					
+
 					if (result.code == 0) {
 						data['id'] = result.returnData.id;
 						data['price'] = result.returnData.price;
@@ -253,18 +257,22 @@ const PlanService: ServiceSchema = {
 
 						// regenerate jwt token
 						if (store == 'CAFEBAZAAR') {
-							const resultOfJwtSecret: any = await ctx.call('api.v1.config.get', {
-								key: 'cafebazaar:jwtSecret',
+							const results = await prisma.config.findMany({
+								where: {
+									key: 'cafebazaar:jwtSecret'
+								}
 							});
 
-							// create jwt token
-							data['jsonwebtoken'] = jwt.generate({
-								price: data['price'] * 10,
-								package_name: 'com.mahasal.app.mahasal',
-								sku: data['plans'][0]['id'].toString(),
-							}, resultOfJwtSecret.data);
+							if (results.length == 1) {
+								// create jwt token
+								data['jsonwebtoken'] = jwt.generate({
+									price: data['price'] * 10,
+									package_name: 'com.mahasal.app.mahasal',
+									sku: data['plans'][0]['id'].toString(),
+								}, results[0].value);
+							}
 						}
-					}		
+					}
 
 					return {
 						code: 200,
@@ -388,12 +396,14 @@ const PlanService: ServiceSchema = {
 					}
 
 					if (method == 'gateway') {
-						const configOfBankRedirectEndpoint: any = await ctx.call('api.v1.config.get', {
-							key: 'endpoint:bank:redirect',
+						const results = await prisma.config.findMany({
+							where: {
+								key: 'endpoint:bank:redirect'
+							}
 						});
 
-						if (configOfBankRedirectEndpoint.data) {
-							const callback = configOfBankRedirectEndpoint.data;
+						if (results.length == 1) {
+							const callback = results[0].value;
 
 							const result = await api.request({
 								method: 'GET',
@@ -678,22 +688,33 @@ const PlanService: ServiceSchema = {
 	 */
 	async started() {
 		setTimeout(() => {
-			this.broker.call('api.v1.config.get', {
-				key: 'cafebazaar:accessToken'
-			}).then((res: any) => {
-				if (res['code'] == 200 && res['data']) {
-					this.settings.cafebazaarAccessToken = res['data'];
+			// this.broker.call('api.v1.config.get', {
+			// 	key: 'cafebazaar:accessToken'
+			// }).then((res: any) => {
+			// 	if (res['code'] == 200 && res['data']) {
+			// 		this.settings.cafebazaarAccessToken = res['data'];
 
 
+			// 	}
+			// }).catch(console.error)
+
+			prisma.config.findMany({
+				where: {
+					key: 'cafebazaar:accessToken'
 				}
-			}).catch(console.error)
-			this.broker.call('api.v1.config.get', {
-				key: 'myket:token'
-			}).then((res: any) => {
-				if (res['code'] == 200 && res['data']) {
-					this.settings.myketToken = res['data'];
+			}).then((result) => {
+				if (result.length == 1) {
+					this.settings.cafebazaarAccessToken = result[0].value;
 				}
 			});
+
+			// this.broker.call('api.v1.config.get', {
+			// 	key: 'myket:token'
+			// }).then((res: any) => {
+			// 	if (res['code'] == 200 && res['data']) {
+			// 		this.settings.myketToken = res['data'];
+			// 	}
+			// }).catch(console.error);
 		}, 1000);
 	},
 
