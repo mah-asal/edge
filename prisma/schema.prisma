@@ -29,6 +29,8 @@ model Device {
   ip        String
   timestamp BigInt
   updated   Boolean @default(false) // updated to latest version
+
+  @@index([user])
 }
 
 model Notification {
@@ -36,6 +38,8 @@ model Notification {
   user     String
   device   String
   firebase String @unique
+
+  @@index([user])
 }
 
 model NotificationSend {
@@ -47,6 +51,8 @@ model NotificationSend {
   body      String
   sent      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([user])
 }
 
 model Config {
@@ -65,6 +71,8 @@ model FeedbackScore {
   device    String
   ip        String
   createdAt DateTime @default(now())
+
+  @@index([user])
 }
 
 model File {
@@ -75,6 +83,8 @@ model File {
   size     Int
   filename String
   url      String
+
+  @@index([user, hash])
 }
 
 model PaymentLog {
@@ -86,6 +96,8 @@ model PaymentLog {
   data      String?
   payied    Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([user])
 }
 
 model RequestLog {
@@ -103,5 +115,19 @@ model RequestLog {
   responsedAt BigInt   @default(0)
   tookedFor   Int      @default(0)
   ip          String
+  createdAt   DateTime @default(now())
+}
+
+model Campaign {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  message     String
+  type        String
+  code        String
+  redirect    String
+  status      String   @default("sending")
+  sends       Int      @default(0)
+  opens       Int      @default(0)
   createdAt   DateTime @default(now())
 }

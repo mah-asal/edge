@@ -9,7 +9,7 @@ const ProfileMixin: ServiceSchema = {
 	 * Settings
 	 */
 	settings: {
-        status: {
+		status: {
 			// error
 			"1": "UNSUBSCRIBED",
 			"2": "SUSSPENDED",
@@ -52,7 +52,7 @@ const ProfileMixin: ServiceSchema = {
 	 * Actions
 	 */
 	actions: {
-		
+
 	},
 
 	/**
@@ -64,7 +64,7 @@ const ProfileMixin: ServiceSchema = {
 	 * Methods
 	 */
 	methods: {
-        async formatProfile(item: any, detailed: boolean = false, withToken: boolean = false) {			
+		async formatProfile(item: any, detailed: boolean = false, withToken: boolean = false) {
 			let image: string = item.defaultImageUrl;
 			let canDeleteImage = false;
 
@@ -99,7 +99,7 @@ const ProfileMixin: ServiceSchema = {
 						Province: item.province ?? 'خارج از کشور',
 						City: item.city ?? 'خارج از کشور',
 					}
-				});				
+				});
 
 				dropdowns = {
 					education: item.education,
@@ -120,7 +120,7 @@ const ProfileMixin: ServiceSchema = {
 				};
 
 				if (result.code == 200) {
-					details = result.data;					
+					details = result.data;
 				}
 
 				const birthDate = moment(item.birthDate).locale('fa');
@@ -149,34 +149,35 @@ const ProfileMixin: ServiceSchema = {
 
 			if (withToken) {
 				plan['sms'] = item.countSmsReminded;
+			}
 
-				const diff = (key = "", mode: 'days' | 'hours' | 'minutes') => {
-					const value = item[key];
+			const diff = (key = "", mode: 'days' | 'hours' | 'minutes') => {
+				const value = item[key];
 
-					if (value) {
-						const dur = moment.duration(moment(value).diff(moment()));
+				if (value) {
+					const dur = moment.duration(moment(value).diff(moment()));
 
-						if (mode == 'days') {
-							return dur.asDays() <= 0 ? 0 : Math.round(dur.asDays());
-						}
-
-						if (mode == 'hours') {
-							return dur.asHours() <= 0 ? 0 : Math.round(dur.asHours());
-						}
-
-						if (mode == 'minutes') {
-							return dur.asMinutes() <= 0 ? 0 : Math.round(dur.asMinutes());
-						}
+					if (mode == 'days') {
+						return dur.asDays() <= 0 ? 0 : Math.round(dur.asDays());
 					}
 
-					return 0;
+					if (mode == 'hours') {
+						return dur.asHours() <= 0 ? 0 : Math.round(dur.asHours());
+					}
+
+					if (mode == 'minutes') {
+						return dur.asMinutes() <= 0 ? 0 : Math.round(dur.asMinutes());
+					}
 				}
 
-				plan['specialDays'] = diff('endDateSpecialAccount', 'days');
-				plan['adDays'] = diff('endDateAdvertisementAccount', 'days');
-				plan['freeHours'] = diff('endDateFreeSpecialAccount', 'hours');
-				plan['freeMinutes'] = diff('endDateFreeSpecialAccount', 'minutes');
+				return 0;
 			}
+
+			plan['specialDays'] = diff('endDateSpecialAccount', 'days');
+			plan['adDays'] = diff('endDateAdvertisementAccount', 'days');
+			plan['freeHours'] = diff('endDateFreeSpecialAccount', 'hours');
+			plan['freeMinutes'] = diff('endDateFreeSpecialAccount', 'minutes');			
+
 
 			return {
 				id: item.id,

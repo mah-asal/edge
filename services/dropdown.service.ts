@@ -219,7 +219,7 @@ const DropdownService: ServiceSchema = {
 		},
 		async loadDropdown() {
 			try {
-				const result: any[] = await api.request({
+				var result: any[] = await api.request({
 					method: "GET",
 					path: "/AppDropDown/GetAll"
 				});
@@ -233,10 +233,10 @@ const DropdownService: ServiceSchema = {
 
 				this.settings.hash = md5(JSON.stringify(this.settings.maps));
 
-				this.broker.call('api.v1.config.set', {
+				await this.broker.call('api.v1.config.set', {
 					key: 'hash:dropdowns',
 					value: this.settings.hash,
-				});
+				});				
 
 				return Promise.resolve();
 			} catch (error) {

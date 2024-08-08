@@ -1,17 +1,9 @@
 import type { ServiceSchema } from "moleculer";
 
-import redis from "../shared/redis";
 import endpoint from "../shared/endpoint";
 import prisma from "../shared/prisma";
 
-const CONFIG_SUFFIX = process.env.CONFIG_SUFFIX as string;
-
 const keys = [
-	"link:download",
-	"link:contact-us",
-	"link:blog",
-	"link:search",
-	"link:privacy",
 	"app:latest-version",
 	"app:deprecated-version",
 	"config:free-account-time",
