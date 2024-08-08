@@ -357,26 +357,6 @@ const SocketService: ServiceSchema = {
 
                     result.status = result.status ?? result.code == 200;
 
-                    const end = Date.now();
-
-                    await prisma.requestLog.create({
-                        data: {
-                            connection: "socket",
-                            node: process.env.NODEID as string,
-                            user: (socket as any).meta.id?.toString() ?? 'unknown',
-                            path: `/v1/call/${action}`,
-                            method: "EMIT",
-                            params: params ?? {},
-                            response: result ?? {},
-                            code: result['code'],
-                            cache: cache == true || cache == 'true' ? true : false,
-                            requestedAt: start,
-                            responsedAt: end,
-                            tookedFor: end - start,
-                            ip: (socket as any).meta.ip
-                        }
-                    });
-
                     socket.emit("call_response", {
                         status: true,
                         code: 200,
