@@ -105,7 +105,7 @@ const DropdownService: ServiceSchema = {
 			visibility: "published",
 			description: "In this action we are just returning list of dropdowns filtered by group key and value",
 			cache: {
-				enabled: true,
+				enabled: false,
 				// ttl for 1 hour
 				ttl: 3600,
 				keys: ['key', 'value']
@@ -154,7 +154,7 @@ const DropdownService: ServiceSchema = {
 						const value = bulk[key];
 						const _key = key.slice(0, 1).toLowerCase() + key.slice(1);
 						result[_key] = this.settings.maps[`${key}:${value}`];
-					}					
+					}
 
 					return {
 						code: 200,
@@ -228,7 +228,10 @@ const DropdownService: ServiceSchema = {
 
 				// covert dropdowns to '{group}:{value}': {text} for mapping
 				for (const item of this.settings.dropdowns) {
-					this.settings.maps[`${item.group}:${item.value}`] = item.text.trim();
+					const key = `${item.group}:${item.value}`;
+					const value = item.text.trim();
+					this.settings.maps[key] = value;
+					await this.broker.cacher!.set(key, value, 0);
 				}
 
 				this.settings.hash = md5(JSON.stringify(this.settings.maps));
@@ -236,7 +239,7 @@ const DropdownService: ServiceSchema = {
 				await this.broker.call('api.v1.config.set', {
 					key: 'hash:dropdowns',
 					value: this.settings.hash,
-				});				
+				});
 
 				return Promise.resolve();
 			} catch (error) {
