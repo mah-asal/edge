@@ -34,7 +34,11 @@ const keys = [
 	"contact:address",
 	"contact:time",
 	"contact:form",
-	"home:banner"
+	"contact:telegram",
+	"contact:rubika",
+	"home:banner",
+	"link:blog",
+	"link:download",
 ].sort();
 
 const ConfigService: ServiceSchema = {

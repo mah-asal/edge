@@ -118,12 +118,24 @@ model RequestLog {
   createdAt   DateTime @default(now())
 }
 
+model ApiRequestLog {
+  id        Int      @id @default(autoincrement())
+  method    String
+  url       String
+  headers   Json
+  body      Json
+  response  Json
+  status    Int
+  createdAt DateTime @default(now())
+}
+
 model Campaign {
   id          Int      @id @default(autoincrement())
   title       String
   description String
   message     String
   type        String
+  method        String
   code        String
   redirect    String
   status      String   @default("sending")

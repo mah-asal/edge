@@ -19,16 +19,16 @@ const ProfileMixin: ServiceSchema = {
 			"6": "LEAVE_FOR_EVER",
 			// not error
 			"0": "NORMAL",
-			"-17": "REFRESH_TOKEN",
-			"-18": "REFRESHED_TOKEN",
-			"-19": "FORGET_PASSWORD",
-			"-100": "EXPIRED_PASSWORD",
-			"-110": "CONFIRMED_MOBILE_MANUALLY",
-			"-120": "UNCONFIRMED_MOBILE_MANUALLY",
-			"-130": "UNBLOCKED_BY_ADMIN",
-			"-140": "RESTORED_PASSWORD",
-			"-150": "UNEXPIRED_PASSWORD",
-			"-160": "UNSUSPENDED",
+			"-7": "REFRESH_TOKEN",
+			"-8": "REFRESHED_TOKEN",
+			"-9": "FORGET_PASSWORD",
+			"-10": "EXPIRED_PASSWORD",
+			"-11": "CONFIRMED_MOBILE_MANUALLY",
+			"-12": "UNCONFIRMED_MOBILE_MANUALLY",
+			"-13": "UNBLOCKED_BY_ADMIN",
+			"-14": "RESTORED_PASSWORD",
+			"-15": "UNEXPIRED_PASSWORD",
+			"-16": "UNSUSPENDED",
 		},
 		seen: {
 			"0": "offline",
@@ -135,9 +135,9 @@ const ProfileMixin: ServiceSchema = {
 				details['birthAt'] = Math.abs(birthDate.valueOf());
 				details['registerDate'] = moment(item.createDate).locale('fa').format('dddd jDD jMMMM jYYYY');
 				details['registerAt'] = moment(item.createDate).valueOf();
-				dropdowns['birthDateYear'] = birthDate.jYear();
-				dropdowns['birthDateMonth'] = (birthDate.jMonth() + 1);
-				dropdowns['birthDateDay'] = birthDate.jDate();
+				dropdowns['birthDateYear'] = birthDate.jYear().toString();
+				dropdowns['birthDateMonth'] = (birthDate.jMonth() + 1).toString();
+				dropdowns['birthDateDay'] = birthDate.jDate().toString();
 				details['age'] = (() => {
 					const dur = moment.duration(moment().diff(moment(item.birthDate)));
 
@@ -176,12 +176,12 @@ const ProfileMixin: ServiceSchema = {
 			plan['specialDays'] = diff('endDateSpecialAccount', 'days');
 			plan['adDays'] = diff('endDateAdvertisementAccount', 'days');
 			plan['freeHours'] = diff('endDateFreeSpecialAccount', 'hours');
-			plan['freeMinutes'] = diff('endDateFreeSpecialAccount', 'minutes');			
-
+			plan['freeMinutes'] = diff('endDateFreeSpecialAccount', 'minutes');
 
 			return {
 				id: item.id,
-				status: this.settings.status[item.latestUserLoginStatus * -10],
+				statusCode: this.latestUserLoginStatus,
+				status: this.settings.status[item.latestUserLoginStatus],
 				avatar: image,
 				defaultAvatar: !canDeleteImage,
 				fullname: `${item.name} ${item.family ?? ''}`.trim(),

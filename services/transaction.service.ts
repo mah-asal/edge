@@ -94,6 +94,12 @@ const TransactionService: ServiceSchema = {
                         data: data,
                     }
                 } catch (error) {
+                    if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
                     return {
                         code: 500
                     }
@@ -160,6 +166,11 @@ const TransactionService: ServiceSchema = {
                     }
                 } catch (error) {
                     console.error(error)
+                    if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
                     return {
                         code: 500

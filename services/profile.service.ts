@@ -112,6 +112,12 @@ const ProfileService: ServiceSchema = {
 						code: 200,
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -161,6 +167,12 @@ const ProfileService: ServiceSchema = {
 						}
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -289,17 +301,19 @@ const ProfileService: ServiceSchema = {
 								image = 'https://s3.tv-92.com/uploads' + image;
 							}
 
-							const cityResult: any = await ctx.call('api.v1.dropdown.byGroupAndValue', {
-								key: "City",
-								value: item.city ? item.city.toString() : '',
-							});
+							// const cityResult: any = await ctx.call('api.v1.dropdown.byGroupAndValue', {
+							// 	key: "City",
+							// 	value: item.city ? item.city.toString() : '',
+							// });
+
+							const cityResult = await this.broker.cacher?.get(`City:${item.city}`);							
 
 							output.push({
 								id: item.id,
 								avatar: image,
 								fullname: `${item.name} ${item.family ?? ''}`.trim(),
 								verified: item.mobileConfirmed ?? false,
-								city: cityResult && cityResult.code == 200 ? cityResult.data ?? 'خارج از کشور' : '-',
+								city: cityResult ?? 'خارج از کشور',
 								age: (() => {
 									const dur = moment.duration(moment().diff(moment(item.birthDate)));
 
@@ -327,6 +341,12 @@ const ProfileService: ServiceSchema = {
 						data: output,
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500,
 					}
@@ -409,6 +429,11 @@ const ProfileService: ServiceSchema = {
 						random,
 					});
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 					return {
 						code: 500
 					}
@@ -526,6 +551,11 @@ const ProfileService: ServiceSchema = {
 
 				} catch (error) {
 					console.error(error);
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500
@@ -563,6 +593,12 @@ const ProfileService: ServiceSchema = {
 						data: await this.formatProfile(result.returnData, true, true),
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -598,6 +634,12 @@ const ProfileService: ServiceSchema = {
 						}
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+					
 					return {
 						code: 500
 					}

@@ -207,6 +207,12 @@ const ChatService: ServiceSchema = {
 						data: data,
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -335,6 +341,12 @@ const ChatService: ServiceSchema = {
 				} catch (error) {
 					console.error(error);
 
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -429,6 +441,12 @@ const ChatService: ServiceSchema = {
 				} catch (error) {
 					console.error(error);
 
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -512,6 +530,12 @@ const ChatService: ServiceSchema = {
 				} catch (error) {
 					console.error(error);
 
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -544,6 +568,13 @@ const ChatService: ServiceSchema = {
 						"message": result['messages'][0],
 					}
 				} catch (error) {
+
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -577,6 +608,13 @@ const ChatService: ServiceSchema = {
 						"message": result['code'] == 0 ? 'چت حذف شد' : 'خطا در حذف چت رخ داد'
 					}
 				} catch (error) {
+
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -684,6 +722,12 @@ const ChatService: ServiceSchema = {
 					}
 				} catch (error) {
 					console.error(error);
+					
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500
@@ -741,12 +785,14 @@ const ChatService: ServiceSchema = {
 						body['message'] = JSON.stringify(body['message']);
 					}
 
-					await api.request({
+					const result = await api.request({
 						method: 'POST',
 						path: '/adminmessage/CreateImageInExternalServereReply',
 						token: token,
 						data: body,
 					});
+
+					console.log(result);
 
 					const output = this.formatMessage({
 						id: Date.now(),
@@ -771,6 +817,11 @@ const ChatService: ServiceSchema = {
 					}
 				} catch (error) {
 					console.error(error);
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500
@@ -830,6 +881,12 @@ const ChatService: ServiceSchema = {
 				} catch (error) {
 					console.error(error);
 
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -868,6 +925,12 @@ const ChatService: ServiceSchema = {
 						}
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -910,6 +973,12 @@ const ChatService: ServiceSchema = {
 						}
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -956,6 +1025,12 @@ const ChatService: ServiceSchema = {
 						code: 200
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+					
 					return {
 						code: 500
 					}

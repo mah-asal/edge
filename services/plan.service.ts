@@ -118,6 +118,11 @@ const PlanService: ServiceSchema = {
 					}
 				} catch (error) {
 					console.error(error);
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500
@@ -210,6 +215,11 @@ const PlanService: ServiceSchema = {
 					}
 				} catch (error) {
 					console.error(error);
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500,
@@ -281,6 +291,11 @@ const PlanService: ServiceSchema = {
 					}
 				} catch (error) {
 					console.error(error);
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500
@@ -521,6 +536,12 @@ const PlanService: ServiceSchema = {
 											}
 										});
 									}
+
+									await ctx.call('api.v1.notification.send', {
+										user: ctx.meta.id,
+										title: 'بسته شما با موفقیت فعال شد',
+										body: 'پرداخت شما از طریق درگاه کافه بازار با موفقیت انجام شد و بسته شما فعال شد'
+									}, {});
 								}
 							}
 						}
@@ -587,6 +608,11 @@ const PlanService: ServiceSchema = {
 					}
 				} catch (error) {
 					console.error(error);
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500,
@@ -616,26 +642,6 @@ const PlanService: ServiceSchema = {
 						path: `/Factor/BankBack?${queries}`,
 						token: token
 					});
-
-					// 1. get current factor
-					const current = await api.request({
-						method: 'GET',
-						path: '/Plan/ShowCurrentFactor',
-						token: token,
-					});
-
-					const factor = current['id'];
-
-					if (factor) {
-						await prisma.paymentLog.updateMany({
-							where: {
-								factor: factor.toString()
-							}, data: {
-								payied: result.code == 0
-							}
-						});
-					}
-
 
 					return {
 						code: 200,

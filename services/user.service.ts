@@ -54,6 +54,12 @@ const UserService: ServiceSchema = {
 						"message": result['messages'][0],
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -90,6 +96,12 @@ const UserService: ServiceSchema = {
 					}
 				} catch (error) {
 					console.error(error);
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+				
 
 					return {
 						code: 500
@@ -126,6 +138,12 @@ const UserService: ServiceSchema = {
 						"message": result['code'] == 0 ? 'شماره موبایل تغییر کرد' : 'خطا در تغییر شماره موبایل رخ داد',
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -162,6 +180,11 @@ const UserService: ServiceSchema = {
 					}
 				} catch (error) {
 					console.error(error);
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500
@@ -199,6 +222,12 @@ const UserService: ServiceSchema = {
 						"message": result['messages'][0],
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -233,6 +262,12 @@ const UserService: ServiceSchema = {
 						"message": result['messages'][0],
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -267,6 +302,12 @@ const UserService: ServiceSchema = {
 						"message": result['messages'][0],
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -294,6 +335,12 @@ const UserService: ServiceSchema = {
 						}
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -318,6 +365,12 @@ const UserService: ServiceSchema = {
 						"message": result['messages'][0],
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+
 					return {
 						code: 500
 					}
@@ -352,6 +405,11 @@ const UserService: ServiceSchema = {
 						"message": result['messages'][0],
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500
@@ -369,7 +427,8 @@ const UserService: ServiceSchema = {
 				user: {
 					type: 'number',
 					convert: true,
-					min: 1
+					min: 1,
+					optional: true
 				},
 				title: {
 					type: 'string'
@@ -557,6 +616,11 @@ const UserService: ServiceSchema = {
 					}
 				} catch (error) {
 					console.error(error);
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
 
 					return {
 						code: 500
@@ -618,6 +682,12 @@ const UserService: ServiceSchema = {
 						message: 'تنظیمات با موفقیت ذخیره شد'
 					}
 				} catch (error) {
+					if(error == 403) {
+						return {
+							code: 403
+						}
+					}
+					
 					return {
 						code: 500
 					}

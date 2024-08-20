@@ -1,5 +1,6 @@
 import endpoint from "./endpoint";
 import axios, { AxiosRequestConfig } from "axios";
+import prisma from "./prisma";
 
 export default {
     request: async (params: IRequestParams) => {
@@ -9,6 +10,13 @@ export default {
                 'Content-Type': 'application/json',
             };
 
+            const url = (params.endpoint ?? endpoint.api) + params.path;
+
+            let config: AxiosRequestConfig<any> = {
+                method: params.method,
+                url: url,
+                headers: headers,
+            };
 
             if (params.method != 'GET' && params.data) {
                 headers['Content-Type'] = 'application/x-www-form-urlencoded'
@@ -21,7 +29,8 @@ export default {
                     }
                 });
 
-                params.data = body;
+                config.data = body;
+
             }
 
             // bearer token if exists 
@@ -36,20 +45,25 @@ export default {
                 };
             }
 
-            const url = (params.endpoint ?? endpoint.api) + params.path;            
-
-            let config: AxiosRequestConfig<any> = {
-                method: params.method,
-                url: url,
-                headers: headers,
-            };            
-
-            if (params.data) {
-                config.data = params.data;
-            }
-
             const response = await axios(config);
 
+            if(process.env.API_LOG == 'true') {
+                await prisma.apiRequestLog.create({
+                    data: {
+                        method: params.method,
+                        url,
+                        headers,
+                        body: params.data ?? {},
+                        response: response.data,
+                        status: response.status
+                    }
+                });
+            }
+
+            if(response.data.code == 4 && response.data.returnData == "NeedAuthentication") {
+                return Promise.reject(403);
+            }
+                
             return response.data;
         } catch (error) {
             return Promise.reject(error);
