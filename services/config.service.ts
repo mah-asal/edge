@@ -14,6 +14,7 @@ const keys = [
 	"config:captcha",
 	"config:feedback",
 	"config:discount",
+	"config:before-purchase",
 	"hash:dropdowns",
 	"endpoint:api",
 	"endpoint:public",
@@ -39,6 +40,10 @@ const keys = [
 	"home:banner",
 	"link:blog",
 	"link:download",
+	"discount:text",
+	"discount:link",
+	"discount:button",
+	"discount:visable"
 ].sort();
 
 const ConfigService: ServiceSchema = {

@@ -492,8 +492,14 @@ const PlanService: ServiceSchema = {
 					}
 
 					if (method == 'cafebazaar') {
+						console.log(ctx.params);
+						
+
 						const { sku, token: purchasesToken } = inapp;
 						const url = `https://pardakht.cafebazaar.ir/devapi/v2/api/validate/com.mahasal.app.mahasal/inapp/${sku}/purchases/${purchasesToken}?access_token=${this.settings.cafebazaarAccessToken}`;
+
+						console.log(url);
+						
 
 						const result = await axios.get(url);
 

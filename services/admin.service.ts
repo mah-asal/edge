@@ -28,12 +28,9 @@ const AdminService: ServiceSchema = {
 				try {
 					const start = Date.now();
 
-					const [resultOfFranceOnlines, resultOfIranOnlines, resultOfFeedbacks, [resultOfApps, resultOfDevices, resultOfNotifications, resultOfSuccessfullSentNotifications, resultOfFailedSentNotifications, resultOfPackages, resultOfStores, resultOfVersions, resultOfBrands, resultOfTotalPayments]]: any = await Promise.all([
+					const [resultOfFranceOnlines, resultOfFeedbacks, [resultOfApps, resultOfDevices, resultOfNotifications, resultOfSuccessfullSentNotifications, resultOfFailedSentNotifications, resultOfPackages, resultOfStores, resultOfVersions, resultOfBrands, resultOfTotalPayments]]: any = await Promise.all([
 						ctx.call('v1.socket.onlines', {}, {
 							nodeID: 'edge@france'
-						}),
-						ctx.call('v1.socket.onlines', {}, {
-							nodeID: 'edge@iran'
 						}),
 						ctx.call('api.v1.feedback.count'),
 						prisma.$transaction([
@@ -66,7 +63,7 @@ const AdminService: ServiceSchema = {
 						data: {
 							feedback: resultOfFeedbacks['data'],
 							users: 0,
-							onlines: Number(resultOfFranceOnlines['data'] + resultOfIranOnlines['data']).toLocaleString('fa-IR'),
+							onlines: Number(resultOfFranceOnlines['data']).toLocaleString('fa-IR'),
 							apps: Number(resultOfApps[0]['count']).toLocaleString('fa-IR'),
 							devices: Number(resultOfDevices[0]['count']).toLocaleString('fa-IR'),
 							notifications: Number(resultOfNotifications[0]['count']).toLocaleString('fa-IR'),

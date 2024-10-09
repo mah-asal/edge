@@ -56,9 +56,9 @@ switch (method) {
     case 'minio':
         const minioClient = new Client({
             port: 443,
-            endPoint: "s3.tv-92.com",
-            accessKey: "UKLODowg867OkaPh9f2r",
-            secretKey: "638w0h4zruqEi5oHmSVZ0PUlTa1EwBOFxxDJaSvr",
+            endPoint: "cdn.tv-92.com", // cdn.tv-92.com
+            accessKey: "JoTbmNPL2ACgJuxmvsvH", // 8dUTkTMTK8uNO6ZMfUIp
+            secretKey: "OPCtkQFv4S75FF8sVoNOVJjO4WrNctDNdMpUwuow", // zI2clFwKMTU0AOqxxySodnEd95Lq5mCNWt6yP0mp
         });
 
         const options: IStorageOptions = {
@@ -75,7 +75,7 @@ switch (method) {
                     const ext = mimeTypes.extension(file.mimetype);
                     const filename = `${uuid.v4()}.${ext}`;
 
-                    (req as any).file_location = `https://s3.tv-92.com/uploads/${filename}`;
+                    (req as any).file_location = `https://cdn.tv-92.com/uploads/${filename}`;
 
                     return filename;
                 },
